@@ -8,6 +8,10 @@ module.exports=async function handler(req,res){
  if(!process.env.DATABASE_URL)return res.status(503).json({error:'Test database unavailable'});
  try{
   if(req.method==='GET'){
+   if(req.query?.pool==='1'){
+    const r=await db().query("SELECT t.number FROM raffle_demo_tickets t JOIN raffle_demo_orders o ON o.id=t.order_id WHERE o.status='confirmed' ORDER BY t.number");
+    return res.status(200).json({sandbox:true,count:r.rowCount,numbers:r.rows.map(x=>Number(x.number))});
+   }
    const [orders,totals]=await Promise.all([
     db().query("SELECT o.id,o.nickname,o.quantity,o.status,o.created_at,o.confirmed_at,COALESCE(json_agg(json_build_object('number',t.number,'code',t.verification_code) ORDER BY t.number) FILTER(WHERE t.number IS NOT NULL),'[]'::json) AS tickets FROM raffle_demo_orders o LEFT JOIN raffle_demo_tickets t ON t.order_id=o.id GROUP BY o.id ORDER BY o.created_at DESC LIMIT 200"),
     db().query("SELECT (SELECT count(*)::int FROM raffle_demo_orders) AS total_orders,(SELECT count(*)::int FROM raffle_demo_tickets) AS issued_tickets")

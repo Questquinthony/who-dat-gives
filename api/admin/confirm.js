@@ -14,6 +14,10 @@ module.exports=async function handler(req,res){
   const client=await db().connect();
   try{
     await client.query('BEGIN');
+    // Serialize paid confirmations with the winner drawing to freeze eligibility atomically.
+    await client.query('SELECT pg_advisory_xact_lock(2026111501)');
+    const alreadyDrawn=await client.query('SELECT 1 FROM raffle_draws WHERE id=1');
+    if(alreadyDrawn.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'Drawing already completed; ticket confirmations are closed'});}
     const q=await client.query('SELECT id,quantity,status FROM raffle_orders WHERE id=$1 FOR UPDATE',[id]);
     if(!q.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Order not found'});}
     const order=q.rows[0];

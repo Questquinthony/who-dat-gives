@@ -284,10 +284,10 @@ $('loadSandbox').onclick=async()=>{
  const access=$('sandboxAccess').value.trim();$('sandboxAccess').value='';
  if(!access){$('demoStatus').textContent='Enter your organizer key to load sample tickets.';return}
  try{
-  const response=await fetch('/api/admin/sandbox',{headers:{Authorization:'Bearer '+access},cache:'no-store'});
+  const response=await fetch('/api/admin/sandbox?pool=1',{headers:{Authorization:'Bearer '+access},cache:'no-store'});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw Error(data.error||'Unable to retrieve practice tickets');
-  sandboxTickets=data.orders.filter(o=>o.status==='confirmed').flatMap(o=>o.tickets.map(t=>Number(t.number))).sort((a,b)=>a-b);
+  sandboxTickets=(data.numbers||[]).map(Number).sort((a,b)=>a-b);
   if(!sandboxTickets.length){$('demoStatus').textContent='No approved practice tickets yet. Approve a sample order in Practice Orders first.';return}
   const view=sandboxTickets.length<=48?sandboxTickets.map(n=>'#'+String(n).padStart(2,'0')):sandboxTickets.slice(0,23).map(n=>'#'+String(n).padStart(2,'0')).concat(['+'+(sandboxTickets.length-23)+' more']);
   displayLabels(view);
