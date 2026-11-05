@@ -18,6 +18,7 @@ button:disabled{opacity:.5}
 <div id="status" class="status" role="status">Looking up your numbers...</div>
 <p id="info" class="hint"></p><div id="numbers" class="numbers"></div>
 <p id="pendingNote" class="hint"></p>
+<div id="zelleDetails" class="panel" hidden><strong>Send your Zelle payment</strong><p class="hint">Open Zelle in your banking app. Confirm the recipient before sending. Include the memo shown below for transaction matching.</p><p>Recipient: <strong id="zelleRecipient"></strong></p><p>Amount: <strong id="zelleAmount"></strong></p><p>Memo: <strong id="zelleMemo"></strong></p><button id="copyRecipient" type="button">Copy Recipient</button> <button id="copyMemo" type="button">Copy Memo</button><p class="hint">Zelle payments are not processed or automatically verified by this website.</p></div>
 <button id="refresh" type="button">Check Payment Status</button>
 </section>
 <p class="hint">Number reservation is not payment confirmation. Only tickets marked verified can enter the host's drawing. Who Dat Gives is an independent community initiative.</p>
@@ -43,6 +44,12 @@ button:disabled{opacity:.5}
    $('pendingNote').textContent=confirmed?
      'Tap any ticket number to open its verified QR code.':
      'These numbers are reserved, not eligible entries yet. Payment must be confirmed against the recipient bank record. Please check again later.';
+   if(!confirmed&&data.paymentRecipient){
+    $('zelleDetails').hidden=false;
+    $('zelleRecipient').textContent=data.paymentRecipient;
+    $('zelleAmount').textContent='$'+(data.amountCents/100).toFixed(2);
+    $('zelleMemo').textContent=data.paymentMemo;
+   }else{$('zelleDetails').hidden=true}
    $('numbers').replaceChildren();
    for(const ticket of data.tickets){
     const a=document.createElement('a');
@@ -56,6 +63,8 @@ button:disabled{opacity:.5}
   finally{busy=false;$('refresh').disabled=false}
  }
  $('refresh').onclick=load;
+ $('copyRecipient').onclick=()=>navigator.clipboard?.writeText($('zelleRecipient').textContent);
+ $('copyMemo').onclick=()=>navigator.clipboard?.writeText($('zelleMemo').textContent);
  load();
 })();
 </script></body></html>
