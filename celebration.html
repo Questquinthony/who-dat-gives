@@ -69,6 +69,12 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
 11
 12</textarea>
    <div class="row"><button id="update">Update Wheel</button><button id="spin" class="gold">Spin to Celebrate!</button></div>
+   <div style="border-top:1px solid #73532c;margin-top:22px;padding-top:15px">
+    <p class="eyebrow">Connected Test Run</p><h2>Load Practice Tickets</h2>
+    <p class="hint">Use the sample tickets you've created in the protected practice environment. The wheel will include every approved practice ticket, never real entries.</p>
+    <label for="sandboxAccess">Organizer key</label><input id="sandboxAccess" type="password" autocomplete="off" placeholder="Paste your organizer key">
+    <div class="row"><button id="loadSandbox" type="button">Load Sandbox Tickets</button><a href="/sandbox.html" style="color:var(--gold)">Create Test Tickets</a></div>
+   </div>
    <p id="demoStatus" class="status">Rehearsal mode: this does not issue tickets or select an official winner.</p>
    <p class="hint">Names are for demonstration only. A real drawing, if enabled later, uses confirmed unique ticket records stored on the server—not this list.</p>
   </section>
@@ -92,7 +98,7 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
 (function(){
 const $=id=>document.getElementById(id);
 const canvas=$('wheel'),ctx=canvas.getContext('2d'),spin=$('spin'),officialSpin=$('realSpin');
-let labels=[],currentRotation=0,animating=false,mode='demo',adminKey='',officialPool=[];
+let labels=[],currentRotation=0,animating=false,mode='demo',adminKey='',officialPool=[],sandboxTickets=[];
 let soundOn=true,audioContext=null,tickFrame=0;
 const palette=['#c89c47','#513314','#e4bf7f','#8c6025','#271b12','#ad822e','#f2d38b','#665027'];
 function secureIndex(n){
@@ -133,6 +139,7 @@ function entriesFromText(){
  return values.map(x=>x.slice(0,32));
 }
 function updateDemo(){
+ sandboxTickets=[];
  try{displayLabels(entriesFromText());$('demoStatus').textContent=labels.length+' example entries ready. Spin when you are ready.';return true}
  catch(e){$('demoStatus').textContent=e.message;return false}
 }
@@ -273,9 +280,37 @@ function turnTo(index,title,note,kind){
  },ms);
 }
 $('update').onclick=()=>{if(!animating)updateDemo()};
+$('loadSandbox').onclick=async()=>{
+ const access=$('sandboxAccess').value.trim();$('sandboxAccess').value='';
+ if(!access){$('demoStatus').textContent='Enter your organizer key to load sample tickets.';return}
+ try{
+  const response=await fetch('/api/admin/sandbox',{headers:{Authorization:'Bearer '+access},cache:'no-store'});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(data.error||'Unable to retrieve practice tickets');
+  sandboxTickets=data.orders.filter(o=>o.status==='confirmed').flatMap(o=>o.tickets.map(t=>Number(t.number))).sort((a,b)=>a-b);
+  if(!sandboxTickets.length){$('demoStatus').textContent='No approved practice tickets yet. Approve a sample order in Practice Orders first.';return}
+  const view=sandboxTickets.length<=48?sandboxTickets.map(n=>'#'+String(n).padStart(2,'0')):sandboxTickets.slice(0,23).map(n=>'#'+String(n).padStart(2,'0')).concat(['+'+(sandboxTickets.length-23)+' more']);
+  displayLabels(view);
+  $('demoStatus').textContent=sandboxTickets.length+' verified PRACTICE tickets loaded. Every ticket has an equal chance. The wheel shows a representative display for larger pools.';
+ }catch(e){sandboxTickets=[];$('demoStatus').textContent=e.message}
+};
+$('entries').addEventListener('input',()=>{if(sandboxTickets.length){sandboxTickets=[];$('demoStatus').textContent='Manual list changed. Press Update Wheel to spin manual entries.'}});
 spin.onclick=()=>{
  if(animating)return;
  unlockAudio();
+ if(sandboxTickets.length){
+  const selected=secureIndex(sandboxTickets.length),n=sandboxTickets[selected];
+  const winnerLabel='#'+String(n).padStart(2,'0');
+  let visual=selected;
+  if(sandboxTickets.length>48){
+   const labelsView=sandboxTickets.slice(0,23).map(x=>'#'+String(x).padStart(2,'0'));
+   if(selected>=23){labelsView.push(winnerLabel);visual=labelsView.length-1}
+   else{labelsView.push('+'+(sandboxTickets.length-23)+' more')}
+   displayLabels(labelsView);
+  }
+  turnTo(visual,'TICKET '+winnerLabel,'Practice result from '+sandboxTickets.length+' eligible TEST tickets. No official winner has been selected.','SANDBOX REHEARSAL');
+  return;
+ }
  if(!updateDemo())return;
  const i=secureIndex(labels.length);
  turnTo(i,labels[i],'Sample result only. No ticket or prize has been awarded.','REHEARSAL CELEBRATION');

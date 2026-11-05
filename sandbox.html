@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#17100b"><title>Practice Orders | Who Dat Gives</title>
+<style>
+:root{color-scheme:dark;--gold:#edc26a;--panel:#241a10;--border:#7b592d;--bg:#120e0b;--text:#ffedd0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#754b2480,transparent 45%),var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
+main{max-width:990px;margin:0 auto;padding:20px 18px 70px}h1{font-size:clamp(34px,6vw,54px);line-height:1.05;margin:12px 0;color:var(--gold)}h2{margin:0 0 10px;color:var(--gold);font-size:22px}
+a{color:var(--gold)}.eyebrow{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:900}
+.panel{padding:22px;border:1px solid var(--border);border-radius:15px;background:var(--panel);margin:19px 0}.notice{padding:13px 16px;border-left:4px solid var(--gold);background:#161009;color:#ffdfac}
+input{width:100%;min-height:48px;background:#100d0b;border:1px solid #a8844e;border-radius:8px;color:#fff5df;padding:12px;font:inherit}
+label{display:block;font-weight:800;margin:13px 0 7px}button{border:1px solid #a6834e;background:var(--gold);color:#261909;padding:12px 18px;border-radius:9px;font:inherit;font-weight:900;cursor:pointer;min-height:48px}
+button.secondary{background:#493218;color:#fff0d2}button:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>*{flex:1}.row label{flex:2;min-width:190px}.row .quantity{max-width:140px;min-width:110px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}.card{border:1px solid #654b2a;background:#130f0b;border-radius:10px;padding:15px;margin:12px 0}
+.card strong{color:var(--gold)}.ticket{display:inline-block;margin:8px 8px 4px 0;padding:7px 10px;border:1px solid #a67d3e;border-radius:7px;background:#34240f;color:#ffdd8e;font-weight:850;text-decoration:none}.muted{color:#c2ab8a;font-size:13px}.bad{color:#ffb8a1}.hide{display:none}
+@media(max-width:600px){.panel{padding:15px}.row>*{flex-basis:100%}.row .quantity{max-width:none}}
+</style></head><body><main>
+<a href="/admin.html">← Organizer Dashboard</a>
+<p class="eyebrow">⚜ Who Dat Nation · Operations</p><h1>Test the Complete Ticket Journey</h1>
+<p class="notice"><b>PRIVATE PRACTICE ENVIRONMENT.</b> Every order and ticket here is a simulation. No bank payments, live raffle entries, or real customers are involved. Use fictional nicknames only. These numbers are isolated from real tickets.</p>
+<section class="panel">
+<h2>Step 1 · Organizer Sign-In</h2>
+<label for="key">Private organizer key</label><div class="row"><input type="password" id="key" placeholder="Enter admin access key" autocomplete="off"><button id="signIn">Unlock Sandbox</button><button id="signOut" class="secondary">Clear</button></div>
+<p id="status" class="muted" role="status">Enter your organizer key to access practice records.</p></section>
+<div id="workspace" class="hide">
+<section class="panel"><h2>Step 2 · Create a Sample Order</h2><p class="muted">Pretend someone orders multiple entries. Nothing is charged and no real order is created.</p>
+<div class="row"><label>Sample nickname<input id="nickname" placeholder="Example: Who Dat Fan" maxlength="60"></label><label class="quantity">Number of test tickets<input id="quantity" type="number" min="1" max="100" value="3"></label><button id="create">Create Test Order</button></div>
+<p id="createStatus" role="status" class="muted"></p></section>
+<section class="panel"><h2>Step 3 · Approve Test Orders &amp; View Tickets</h2><p class="muted">Approving a test order simulates payment verification. It generates separate, sequential demo ticket numbers and unique scannable QR codes.</p>
+<div class="row"><button id="refresh" class="secondary">Refresh Test Records</button><a href="/celebration.html" class="ticket">🎉 Go To Celebration Wheel</a></div>
+<div id="stats" class="notice" style="margin-top:12px"></div><div id="orders"></div></section>
+<section class="panel"><h2>Step 4 · Rehearse the Drawing</h2><p>In the celebration wheel, use <b>Load Sandbox Tickets</b> to retrieve these approved practice tickets from the database. Spin, hear the winner announced, and check its matching number here.</p><p class="muted">These demo entries will never appear in the real drawing or real order statistics.</p></section></div>
+</main><script>
+(function(){
+const el=id=>document.getElementById(id);
+let key='';
+async function req(body){
+ const opts={headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},cache:'no-store'};
+ if(body){opts.method='POST';opts.body=JSON.stringify(body)}
+ const r=await fetch('/api/admin/sandbox',opts),data=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(data.error||'Request failed: '+r.status);
+ return data;
+}
+async function refresh(){
+ const data=await req();
+ el('workspace').classList.remove('hide');
+ el('stats').textContent=data.stats.total_orders+' test orders · '+data.stats.issued_tickets+' practice tickets issued · $0 collected';
+ const root=el('orders');root.replaceChildren();
+ if(!data.orders.length){const p=document.createElement('p');p.className='muted';p.textContent='No practice orders yet. Create your first test order above.';root.append(p)}
+ for(const order of data.orders){
+  const card=document.createElement('div');card.className='card';
+  const heading=document.createElement('strong');heading.textContent=order.nickname+' · '+order.quantity+' ticket(s) · '+order.status.toUpperCase();
+  const detail=document.createElement('p');detail.className='muted';detail.textContent=new Date(order.created_at).toLocaleString()+' · SIMULATION / NOT PAID';
+  card.append(heading,detail);
+  if(order.status==='pending'){
+   const btn=document.createElement('button');btn.textContent='Approve Practice Order';btn.onclick=async()=>{
+    if(!confirm('Issue '+order.quantity+' PRACTICE ticket(s)? This does NOT verify or charge any payment.'))return;
+    btn.disabled=true;
+    try{await req({action:'confirm',orderId:order.id});await refresh();el('createStatus').textContent='Practice tickets issued successfully.'}
+    catch(e){btn.disabled=false;el('createStatus').textContent=e.message}
+   };
+   card.append(btn);
+  }else{
+   const label=document.createElement('p');label.className='muted';label.textContent='Open a ticket to see its unique number and QR verification.';
+   card.append(label);
+   for(const t of order.tickets){
+    const a=document.createElement('a');a.className='ticket';a.target='_blank';a.rel='noopener noreferrer';
+    a.href='/sandbox-ticket.html?code='+encodeURIComponent(t.code);
+    a.textContent='DEMO #'+String(t.number).padStart(2,'0');card.append(a)
+   }
+  }
+  root.append(card)
+ }
+}
+el('signIn').onclick=async()=>{
+ key=el('key').value.trim();el('key').value='';if(!key){el('status').textContent='Enter your key.';return}
+ el('signIn').disabled=true;el('status').textContent='Checking organizer access...';
+ try{await refresh();el('status').textContent='Practice system unlocked.'}
+ catch(e){key='';el('workspace').classList.add('hide');el('status').textContent=e.message}
+ finally{el('signIn').disabled=false}
+};
+el('signOut').onclick=()=>{key='';el('workspace').classList.add('hide');el('key').value='';el('status').textContent='Key cleared.'};
+el('refresh').onclick=async()=>{try{await refresh()}catch(e){el('createStatus').textContent=e.message}};
+el('create').onclick=async()=>{
+ const nickname=el('nickname').value.trim(),quantity=Number(el('quantity').value);
+ if(nickname.length<2||nickname.length>60||!Number.isInteger(quantity)||quantity<1||quantity>100){el('createStatus').textContent='Use a sample nickname and 1–100 test tickets.';return}
+ el('create').disabled=true;el('createStatus').textContent='Creating practice order...';
+ try{
+  await req({action:'create',nickname,quantity});
+  el('createStatus').textContent='Sample order created. Use Approve Practice Order below to issue demo tickets.';
+  el('nickname').value='';await refresh();
+ }catch(e){el('createStatus').textContent=e.message}
+ finally{el('create').disabled=false}
+};
+})();
+</script></body></html>

@@ -46,3 +46,22 @@ CREATE TABLE IF NOT EXISTS raffle_draws (
   selection_method TEXT NOT NULL DEFAULT 'node_crypto_randomInt',
   drawn_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+
+-- Isolated no-payment rehearsal system; no test tickets ever enter the real drawing.
+CREATE TABLE IF NOT EXISTS raffle_demo_orders (
+  id UUID PRIMARY KEY,
+  nickname TEXT NOT NULL CHECK(length(nickname) BETWEEN 2 AND 60),
+  quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 100),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  confirmed_at TIMESTAMPTZ
+);
+CREATE SEQUENCE IF NOT EXISTS demo_ticket_number_seq START WITH 1 INCREMENT BY 1;
+CREATE TABLE IF NOT EXISTS raffle_demo_tickets (
+  number BIGINT PRIMARY KEY DEFAULT nextval('demo_ticket_number_seq'),
+  order_id UUID NOT NULL REFERENCES raffle_demo_orders(id),
+  verification_code TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS demo_tickets_order_idx ON raffle_demo_tickets(order_id);
