@@ -3,5 +3,9 @@
   "version": "0.2.0",
   "private": true,
   "description": "Who Dat Gives event site with gated ticket infrastructure",
-  "dependencies": {"pg": "^8.13.0", "qrcode": "^1.5.4"}
+  "dependencies": {
+    "pg": "^8.13.0",
+    "qrcode": "^1.5.4",
+    "nodemailer": "^7.0.11"
+  }
 }

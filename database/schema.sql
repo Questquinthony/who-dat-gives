@@ -69,3 +69,15 @@ CREATE TABLE IF NOT EXISTS raffle_demo_tickets (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS demo_tickets_order_idx ON raffle_demo_tickets(order_id);
+
+-- Track private organizer email deliveries independently for each recipient and event.
+CREATE TABLE IF NOT EXISTS raffle_notification_deliveries (
+ order_id UUID NOT NULL REFERENCES raffle_orders(id),
+ event_type TEXT NOT NULL CHECK(event_type IN ('reserved','verified')),
+ recipient TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('sending','sent','failed')),
+ last_attempt_at TIMESTAMPTZ,
+ sent_at TIMESTAMPTZ,
+ error_code TEXT,
+ PRIMARY KEY(order_id,event_type,recipient)
+);
