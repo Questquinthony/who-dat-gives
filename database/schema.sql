@@ -81,3 +81,16 @@ CREATE TABLE IF NOT EXISTS raffle_notification_deliveries (
  error_code TEXT,
  PRIMARY KEY(order_id,event_type,recipient)
 );
+
+
+-- Customer private receipt delivery: reserved number and verified ticket messages.
+-- Never assume email sending means payment was received.
+CREATE TABLE IF NOT EXISTS raffle_customer_mail (
+ order_id UUID NOT NULL REFERENCES raffle_orders(id),
+ event_type TEXT NOT NULL CHECK(event_type IN ('reserved','verified')),
+ status TEXT NOT NULL CHECK(status IN ('sending','sent','failed')),
+ last_attempt_at TIMESTAMPTZ,
+ sent_at TIMESTAMPTZ,
+ error_code TEXT,
+ PRIMARY KEY(order_id,event_type)
+);

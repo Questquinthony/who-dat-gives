@@ -9,13 +9,18 @@ module.exports=async function handler(req,res){
     const r=await db().query(
       `SELECT o.id,o.buyer_name,o.phone,o.email,o.quantity,o.amount_cents,
               o.status,o.created_at,o.confirmed_at,o.payment_reference,
+              CASE WHEN o.receipt_token IS NOT NULL THEN 'WDG-' || UPPER(LEFT(o.receipt_token,10)) ELSE NULL END AS zelle_memo,
               COALESCE(d.status,'not_sent') AS email_status,
+              COALESCE(cm1.status,'not_sent') AS customer_reservation_email,
+              COALESCE(cm2.status,'not_sent') AS customer_confirmation_email,
               COALESCE(json_agg(json_build_object('number',t.number,'verificationCode',t.verification_code)
               ORDER BY t.number) FILTER(WHERE t.number IS NOT NULL),'[]'::json) AS tickets
          FROM raffle_orders o
          LEFT JOIN raffle_tickets t ON t.order_id=o.id
          LEFT JOIN raffle_email_deliveries d ON d.order_id=o.id
-        GROUP BY o.id,d.status ORDER BY o.created_at DESC LIMIT 100`
+         LEFT JOIN raffle_customer_mail cm1 ON cm1.order_id=o.id AND cm1.event_type='reserved'
+         LEFT JOIN raffle_customer_mail cm2 ON cm2.order_id=o.id AND cm2.event_type='verified'
+        GROUP BY o.id,d.status,cm1.status,cm2.status ORDER BY o.created_at DESC LIMIT 100`
     );
     return res.status(200).json({orders:r.rows});
   }catch(e){console.error('Admin orders error',e.code||'unknown');return res.status(500).json({error:'Unable to load orders'});}

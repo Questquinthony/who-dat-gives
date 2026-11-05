@@ -1,6 +1,6 @@
 const {randomUUID,randomBytes}=require('crypto');
 const {db,checkoutReady}=require('../lib/db');
-const {notifyOrganizers}=require('../lib/order-mail');
+const {notifyOrganizers,notifyCustomer}=require('../lib/order-mail');
 const tokenRegex=/^[0-9a-f]{64}$/i;
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','no-store, private');
@@ -70,7 +70,7 @@ module.exports=async function handler(req,res){
    tickets,ticketsReserved:quantity,receiptUrl:'/receipt.html?token='+receiptToken,
    message:'Numbers reserved. Payment confirmation is still required before entry is valid.'
   });
-  await notifyOrganizers(id,'reserved').catch(()=>{});
+  await Promise.allSettled([notifyOrganizers(id,'reserved'),notifyCustomer(id,'reserved')]);
   return;
  }catch(e){
   try{await client.query('ROLLBACK')}catch(_){}

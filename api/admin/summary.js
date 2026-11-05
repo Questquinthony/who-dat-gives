@@ -34,7 +34,7 @@ module.exports=async function handler(req,res){
       stats:{...stats.rows[0],...tickets.rows[0]},
       recentEvents:events.rows,
       salesEnabled:entriesEnabled(),
-      emailConfigured:Boolean(process.env.RESEND_API_KEY&&process.env.EMAIL_FROM&&process.env.SITE_URL),
+      emailConfigured:Boolean(process.env.GMAIL_SMTP_USER&&process.env.GMAIL_SMTP_APP_PASSWORD&&process.env.SITE_URL),
       organizerNotificationsReady:organizerEmailReady(),
       organizerRecipientCount:recipients().length,
       gmailSenderConfigured:Boolean(process.env.GMAIL_SMTP_USER),

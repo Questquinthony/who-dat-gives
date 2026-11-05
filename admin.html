@@ -48,7 +48,7 @@ async function load(){
   salesEnabled=Boolean(summary.salesEnabled);emailConfigured=Boolean(summary.emailConfigured);
   byId('saleStatus').textContent=salesEnabled?'Paid entry controls are enabled; verify authorization and transactions before any confirmation.':'SAFE PREVIEW: Paid entries and confirmations are disabled.';
   byId('emailStatus').textContent=summary.organizerNotificationsReady?'Organizer Gmail notifications are ready.':'Organizer notification inboxes saved ('+summary.organizerRecipientCount+'). Gmail sending is awaiting secure authorization.';
-  byId('emailStatus').textContent+=' Customer receipts: '+(emailConfigured?'email service configured.':'automatic email delivery not configured yet.');
+  byId('emailStatus').textContent+=' Customer email receipts: '+(emailConfigured?'configured for customers who provide email.':'not configured.');
   byId('emailTest').classList.toggle('hide',!summary.organizerNotificationsReady);
   const names=[['orders','Total orders'],['pending_orders','Pending payments'],['reserved_tickets','Numbers reserved'],['issued_tickets','Verified tickets']];
   const root=byId('stats');root.replaceChildren();
@@ -59,12 +59,15 @@ async function load(){
    const tr=document.createElement('tr');
    cell(tr,(new Date(o.created_at)).toLocaleString()+' · '+o.status);
    cell(tr,o.buyer_name+' | '+o.phone+' | '+(o.email||'No email'));
-   cell(tr,String(o.id)+' | '+o.quantity+' × $15','mono');
+   cell(tr,o.quantity+' × $15 = $'+(o.amount_cents/100).toFixed(2)+' | Zelle memo: '+(o.zelle_memo||'Not assigned'),'mono');
    const td=cell(tr,'');
    if(o.tickets.length){
     for(const t of o.tickets){let a=document.createElement('a');a.href='/ticket.html?code='+encodeURIComponent(t.verificationCode);a.target='_blank';a.rel='noopener noreferrer';a.textContent=(o.status==='confirmed'?'Verified #':'Reserved #')+String(t.number).padStart(2,'0')+' ';td.append(a)}
    } else {td.textContent='None issued'}
-   const a=cell(tr,'');let note=document.createElement('div');note.className='muted';note.textContent='Email: '+o.email_status;a.append(note);
+   const a=cell(tr,'');
+   let note=document.createElement('div');note.className='muted';
+   note.textContent='Customer email: reserved '+o.customer_reservation_email+'; verified '+o.customer_confirmation_email;
+   a.append(note);
    if(salesEnabled&&o.status==='pending_payment'){
     let btn=document.createElement('button');btn.textContent='Verify & confirm';btn.onclick=async()=>{
       const reference=prompt('Enter the independently verified bank/payment reference for this order:');
@@ -74,7 +77,7 @@ async function load(){
       catch(e){alert(e.message);btn.disabled=false}
     };a.append(btn)
    }
-   if(salesEnabled&&emailConfigured&&o.status==='confirmed'&&o.email&&o.email_status!=='sent'){
+   if(false&&salesEnabled&&emailConfigured&&o.status==='confirmed'&&o.email&&o.email_status!=='sent'){
     let btn=document.createElement('button');btn.className='secondary';btn.textContent='Send receipt';btn.onclick=async()=>{
       if(!confirm('Send a ticket receipt to '+o.email+'?'))return;
       try{btn.disabled=true;await request('/api/admin/send-email',{method:'POST',body:JSON.stringify({orderId:o.id})});await load()}

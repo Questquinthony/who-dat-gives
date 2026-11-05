@@ -1,6 +1,6 @@
 const {db,entriesEnabled}=require('../../lib/db');
 const authorized=require('../../lib/admin-auth');
-const {notifyOrganizers}=require('../../lib/order-mail');
+const {notifyOrganizers,notifyCustomer}=require('../../lib/order-mail');
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  if(req.method!=='POST'){res.setHeader('Allow','POST');return res.status(405).json({error:'Method not allowed'})}
@@ -29,7 +29,7 @@ module.exports=async function handler(req,res){
   await client.query('COMMIT');
   client.release();released=true;
   res.status(200).json({orderId:id,status:'confirmed',tickets:q.rows.map(t=>({number:Number(t.number),verificationCode:t.verification_code}))});
-  await notifyOrganizers(id,'verified').catch(()=>{});
+  await Promise.allSettled([notifyOrganizers(id,'verified'),notifyCustomer(id,'verified')]);
   return;
  }catch(e){
   try{await client.query('ROLLBACK')}catch(_){}
