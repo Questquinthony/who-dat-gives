@@ -1,0 +1,61 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#17100b"><title>Your Reserved Numbers | Who Dat Gives</title>
+<style>
+:root{color-scheme:dark;--gold:#edc168;--muted:#d0b991}*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% -30%,#94601b55,transparent 50%),#100d0a;color:#f7e9cb;font:16px/1.55 system-ui,-apple-system,sans-serif}
+main{max-width:680px;margin:auto;padding:25px 19px 70px}a{color:var(--gold)}
+h1{font-size:clamp(33px,6vw,55px);line-height:1.08;margin:14px 0;color:var(--gold)}
+.panel{background:#241b11;border:1px solid #967038;border-radius:14px;padding:22px;margin:18px 0}
+.hint{font-size:13px;color:var(--muted)}.status{background:#110d09;padding:14px;border-left:4px solid var(--gold);margin:16px 0;font-weight:850}
+.numbers{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:11px}
+.number{display:block;padding:17px 5px;background:linear-gradient(135deg,#493416,#a3772e);border-radius:11px;text-align:center;color:#fff6de;text-decoration:none;font-size:28px;font-weight:950}
+.number small{font-size:10px;display:block;letter-spacing:.5px}
+button{background:var(--gold);border:0;border-radius:9px;color:#2b1a05;font:inherit;font-weight:850;padding:13px 20px;min-height:46px;cursor:pointer}
+button:disabled{opacity:.5}
+</style></head><body><main>
+<a href="/">← Who Dat Gives</a><h1>Your Ticket Numbers</h1>
+<p>This is your private receipt page. Save or screenshot it so you can return to check payment verification.</p>
+<section class="panel">
+<div id="status" class="status" role="status">Looking up your numbers...</div>
+<p id="info" class="hint"></p><div id="numbers" class="numbers"></div>
+<p id="pendingNote" class="hint"></p>
+<button id="refresh" type="button">Check Payment Status</button>
+</section>
+<p class="hint">Number reservation is not payment confirmation. Only tickets marked verified can enter the host's drawing. Who Dat Gives is an independent community initiative.</p>
+</main><script>
+(function(){
+ const token=new URLSearchParams(location.search).get('token')||'';
+ const $=id=>document.getElementById(id);
+ if(!/^[0-9a-f]{64}$/i.test(token)){
+  $('status').textContent='Invalid private receipt link.';$('refresh').disabled=true;return
+ }
+ let busy=false;
+ async function load(){
+  if(busy)return;
+  busy=true;$('refresh').disabled=true;
+  try{
+   const r=await fetch('/api/orders?token='+encodeURIComponent(token),{cache:'no-store'});
+   const data=await r.json();
+   if(!r.ok)throw Error(data.error||'Could not load receipt');
+   const confirmed=data.confirmed;
+   $('status').textContent=confirmed?'✓ PAYMENT VERIFIED — YOUR TICKETS ARE ACTIVE':
+     data.status==='pending_payment'?'TICKET NUMBERS RESERVED — AWAITING PAYMENT VERIFICATION':'ORDER NOT ACTIVE';
+   $('info').textContent=data.quantity+' ticket'+(data.quantity===1?'':'s')+' · $'+(data.amountCents/100).toFixed(2);
+   $('pendingNote').textContent=confirmed?
+     'Tap any ticket number to open its verified QR code.':
+     'These numbers are reserved, not eligible entries yet. Payment must be confirmed against the recipient bank record. Please check again later.';
+   $('numbers').replaceChildren();
+   for(const ticket of data.tickets){
+    const a=document.createElement('a');
+    a.className='number';a.href=ticket.url;
+    a.textContent='#'+String(ticket.number).padStart(2,'0');
+    const label=document.createElement('small');
+    label.textContent=confirmed?'VERIFIED':'RESERVED';
+    a.append(label);$('numbers').append(a);
+   }
+  }catch(e){$('status').textContent=e.message}
+  finally{busy=false;$('refresh').disabled=false}
+ }
+ $('refresh').onclick=load;
+ load();
+})();
+</script></body></html>
