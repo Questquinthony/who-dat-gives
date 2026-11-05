@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Verify Ticket | Who Dat Gives</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{background:#100d0a;color:#fff0d1;font-family:system-ui,Arial;margin:0;padding:22px}
+main{max-width:580px;margin:auto}.eyebrow{color:#eabd5e;letter-spacing:3px;font-weight:900;font-size:13px}.ticket{border:2px solid #c79b49;background:linear-gradient(#fff6df,#d8b470);color:#291d09;border-radius:16px;overflow:hidden;margin:20px 0}
+.top{background:#19120b;color:#efc778;padding:24px;font-size:18px;font-weight:900;display:flex;justify-content:space-between}
+.body{text-align:center;padding:30px 15px}h1{font-size:35px;margin:10px 0}.number{font-weight:1000;font-size:76px}
+#qr{width:180px;height:180px;background:white;padding:9px;margin:20px auto;border-radius:5px}
+.status{font-size:18px;font-weight:750}.footer{border-top:2px dashed #b08b56;padding:17px;color:#574015;font-size:12px}
+a{color:#eabd5e}.hide{display:none}@media print{body{background:#fff}.ticket{margin:0}nav,.nonprint{display:none}}
+</style></head><body><main>
+<nav><a href="/">← Who Dat Gives</a></nav>
+<p class="eyebrow">WHO DAT NATION · OFFICIAL VERIFICATION</p>
+<p id="status" class="status">Checking ticket authenticity...</p>
+<article id="ticket" class="ticket hide">
+<div class="top">WHO DAT GIVES <span>⚜</span></div>
+<div class="body"><div class="eyebrow" style="color:#4a3818">SAINTS RAFFLE EVENT</div>
+<h1>THANK YOU FOR YOUR SUPPORT!</h1><div id="number" class="number"></div><b>VERIFIED TICKET NUMBER</b>
+<div><img id="qr" alt="Unique ticket verification QR code"></div>
+<div style="font-size:13px">Scan this QR code to confirm this ticket.</div>
+<div class="footer">SAINTS VS. PANTHERS · NOVEMBER 15, 2026 · CAESARS SUPERDOME</div></div></article>
+<p class="nonprint">Save this page or take a screenshot of your verified ticket.</p>
+<p class="nonprint" style="font-size:12px;color:#cbb895">Independent community initiative. Not affiliated with the NFL or New Orleans Saints.</p>
+</main><script>
+(async function(){
+const s=document.getElementById('status'),panel=document.getElementById('ticket');
+const code=new URLSearchParams(location.search).get('code')||'';
+if(!/^[a-f0-9]{48}$/.test(code)){s.textContent='Invalid verification link.';return}
+try{
+const r=await fetch('/api/tickets/verify?code='+encodeURIComponent(code),{cache:'no-store'});
+const info=await r.json();
+if(!r.ok||!info.valid){s.textContent='This ticket could not be verified. Contact the event organizer.';return}
+s.textContent='✓ Verified ticket — issued by Who Dat Gives';
+document.getElementById('number').textContent=String(info.number).padStart(2,'0');
+document.getElementById('qr').src='/api/tickets/qr?code='+encodeURIComponent(code);
+panel.classList.remove('hide');
+}catch(e){s.textContent='Verification service temporarily unavailable.'}
+})();
+</script></body></html>

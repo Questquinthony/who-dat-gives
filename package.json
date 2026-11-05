@@ -1,9 +1,7 @@
 {
   "name": "who-dat-gives",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Who Dat Gives Saints fundraising event website",
-  "dependencies": {
-    "pg": "^8.13.0"
-  }
+  "description": "Who Dat Gives event site with gated ticket infrastructure",
+  "dependencies": {"pg": "^8.13.0", "qrcode": "^1.5.4"}
 }
