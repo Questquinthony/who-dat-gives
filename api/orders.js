@@ -1,5 +1,5 @@
 const { randomUUID } = require('crypto');
-const {db,entriesEnabled} = require('./_db');
+const {db,entriesEnabled} = require('../lib/db');
 module.exports = async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='POST'){res.setHeader('Allow','POST');return res.status(405).json({error:'Method not allowed'});}
