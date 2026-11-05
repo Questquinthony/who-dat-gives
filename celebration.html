@@ -98,7 +98,7 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
 (function(){
 const $=id=>document.getElementById(id);
 const canvas=$('wheel'),ctx=canvas.getContext('2d'),spin=$('spin'),officialSpin=$('realSpin');
-let labels=[],currentRotation=0,animating=false,mode='demo',adminKey='',officialPool=[],sandboxTickets=[];
+let labels=[],currentRotation=0,animating=false,mode='demo',adminKey='',officialPool=[],sandboxTickets=[],autoPreviewCount=0,sandboxAwaiting=false;
 let soundOn=true,audioContext=null,tickFrame=0;
 const palette=['#c89c47','#513314','#e4bf7f','#8c6025','#271b12','#ad822e','#f2d38b','#665027'];
 function secureIndex(n){
@@ -117,7 +117,7 @@ function displayLabels(arr){
   const start=-Math.PI/2+i*step,end=start+step;
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,end);ctx.closePath();
   ctx.fillStyle=palette[i%palette.length];ctx.fill();
-  ctx.strokeStyle='#1d1209';ctx.lineWidth=2;ctx.stroke();
+  if(count<=120){ctx.strokeStyle='#1d1209';ctx.lineWidth=2;ctx.stroke();}
   if(count<=36){
    ctx.save();ctx.translate(cx,cy);ctx.rotate(start+step/2);
    ctx.fillStyle=i%8===2||i%8===6?'#241503':'#fff5dd';ctx.font=(count>18?'bold 19px':'bold 26px')+' system-ui';
@@ -128,18 +128,18 @@ function displayLabels(arr){
  }
  ctx.beginPath();ctx.arc(cx,cy,57,0,2*Math.PI);ctx.fillStyle='#21160c';ctx.fill();
  ctx.strokeStyle='#f0c35d';ctx.lineWidth=10;ctx.stroke();
- ctx.fillStyle='#f4d07d';ctx.font='bold 48px system-ui';ctx.textBaseline='middle';ctx.textAlign='center';ctx.fillText('⚜',cx,cy);
+ ctx.fillStyle='#f4d07d';ctx.font='bold 48px system-ui';ctx.textBaseline='middle';ctx.textAlign='center';ctx.fillText(count>48?String(count):'⚜',cx,cy);
  canvas.style.transition='none';canvas.style.transform='rotate(0deg)';void canvas.offsetWidth;
  canvas.style.transition='';currentRotation=0;
  $('winner').classList.remove('show');
 }
 function entriesFromText(){
  const values=$('entries').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- if(values.length<2||values.length>48)throw Error('Enter between 2 and 48 rehearsal entries.');
+ if(values.length<1||values.length>48)throw Error('Enter between 1 and 48 manual rehearsal entries. For larger examples, choose the quantity on the first page.');
  return values.map(x=>x.slice(0,32));
 }
 function updateDemo(){
- sandboxTickets=[];
+ sandboxTickets=[];autoPreviewCount=0;sandboxAwaiting=false;
  try{displayLabels(entriesFromText());$('demoStatus').textContent=labels.length+' example entries ready. Spin when you are ready.';return true}
  catch(e){$('demoStatus').textContent=e.message;return false}
 }
@@ -287,14 +287,19 @@ $('loadSandbox').onclick=async()=>{
   const response=await fetch('/api/admin/sandbox?pool=1',{headers:{Authorization:'Bearer '+access},cache:'no-store'});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw Error(data.error||'Unable to retrieve practice tickets');
-  sandboxTickets=(data.numbers||[]).map(Number).sort((a,b)=>a-b);
+  sandboxTickets=(data.numbers||[]).map(Number).sort((a,b)=>a-b);autoPreviewCount=0;sandboxAwaiting=false;
   if(!sandboxTickets.length){$('demoStatus').textContent='No approved practice tickets yet. Approve a sample order in Practice Orders first.';return}
   const view=sandboxTickets.length<=48?sandboxTickets.map(n=>'#'+String(n).padStart(2,'0')):sandboxTickets.slice(0,23).map(n=>'#'+String(n).padStart(2,'0')).concat(['+'+(sandboxTickets.length-23)+' more']);
-  displayLabels(view);
+  displayLabels(view);spin.disabled=false;
   $('demoStatus').textContent=sandboxTickets.length+' verified PRACTICE tickets loaded. Every ticket has an equal chance. The wheel shows a representative display for larger pools.';
  }catch(e){sandboxTickets=[];$('demoStatus').textContent=e.message}
 };
-$('entries').addEventListener('input',()=>{if(sandboxTickets.length){sandboxTickets=[];$('demoStatus').textContent='Manual list changed. Press Update Wheel to spin manual entries.'}});
+$('entries').addEventListener('input',()=>{
+ if(sandboxTickets.length||autoPreviewCount||sandboxAwaiting){
+  sandboxTickets=[];autoPreviewCount=0;sandboxAwaiting=false;spin.disabled=false;
+  $('demoStatus').textContent='Manual list changed. Press Update Wheel to use your numbers.';
+ }
+});
 spin.onclick=()=>{
  if(animating)return;
  unlockAudio();
@@ -311,7 +316,8 @@ spin.onclick=()=>{
   turnTo(visual,'TICKET '+winnerLabel,'Practice result from '+sandboxTickets.length+' eligible TEST tickets. No official winner has been selected.','SANDBOX REHEARSAL');
   return;
  }
- if(!updateDemo())return;
+ if(sandboxAwaiting){$('demoStatus').textContent='First load approved practice tickets using your organizer key.';return}
+ if(!autoPreviewCount&&!updateDemo())return;
  const i=secureIndex(labels.length);
  turnTo(i,labels[i],'Sample result only. No ticket or prize has been awarded.','REHEARSAL CELEBRATION');
 };
@@ -320,7 +326,11 @@ function setMode(next){
  mode=next;$('demo').style.display=next==='demo'?'block':'none';$('real').style.display=next==='official'?'block':'none';
  $('demoTab').setAttribute('aria-pressed',String(next==='demo'));$('officialTab').setAttribute('aria-pressed',String(next==='official'));
  $('winner').classList.remove('show');
- if(next==='demo')updateDemo();else displayLabels(Array.from({length:12},(_,i)=>'TICKET '+String(i+1).padStart(2,'0')));
+ if(next==='demo'){
+  if(sandboxAwaiting){ctx.clearRect(0,0,720,720);spin.disabled=true}
+  else if(autoPreviewCount)displayLabels(Array.from({length:autoPreviewCount},(_,i)=>String(i+1).padStart(2,'0')));
+  else updateDemo();
+ }else displayLabels(Array.from({length:12},(_,i)=>'TICKET '+String(i+1).padStart(2,'0')));
 }
 $('demoTab').onclick=()=>setMode('demo');$('officialTab').onclick=()=>setMode('official');
 async function secureFetch(path,opts={}){
@@ -362,6 +372,27 @@ officialSpin.onclick=async()=>{
   turnTo(visual,'TICKET '+winnerLabel,'Official result recorded from '+result.count+' confirmed tickets.','OFFICIAL WINNER');
  }catch(e){$('realStatus').textContent=e.message}
 };
-updateDemo();
+function loadDemoFromNavigation(){
+ const params=new URLSearchParams(location.search);
+ if(params.get('source')==='sandbox'){
+  sandboxAwaiting=true;autoPreviewCount=0;sandboxTickets=[];
+  $('entries').value='';ctx.clearRect(0,0,720,720);spin.disabled=true;
+  $('demoStatus').textContent='WAITING FOR PRACTICE TICKETS: Enter your organizer key and tap Load Sandbox Tickets. No placeholder ticket numbers will be drawn.';
+  return;
+ }
+ let count=Number(params.get('demoCount'));
+ if(!Number.isInteger(count)||count<1||count>999){
+  try{count=Number(sessionStorage.getItem('whoDatDemoCount'))}catch(e){count=NaN}
+ }
+ if(Number.isInteger(count)&&count>=1&&count<=999){
+  autoPreviewCount=count;
+  const values=Array.from({length:count},(_,i)=>String(i+1).padStart(2,'0'));
+  if(count<=48)$('entries').value=values.join(String.fromCharCode(10));
+  else{$('entries').value='';$('entries').placeholder=count+' numbered preview entries (edit for a manual list)'}
+  displayLabels(values);
+  $('demoStatus').textContent=count+' sample ticket'+(count===1?'':'s')+' loaded from the first page. The preview spins among all '+count+' numbers, without payments or real entries.';
+ }else updateDemo();
+}
+loadDemoFromNavigation();
 })();
 </script></body></html>

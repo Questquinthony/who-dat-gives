@@ -25,7 +25,7 @@ button.secondary{background:#493218;color:#fff0d2}button:disabled{opacity:.45;cu
 <div class="row"><label>Sample nickname<input id="nickname" placeholder="Example: Who Dat Fan" maxlength="60"></label><label class="quantity">Number of test tickets<input id="quantity" type="number" min="1" max="100" value="3"></label><button id="create">Create Test Order</button></div>
 <p id="createStatus" role="status" class="muted"></p></section>
 <section class="panel"><h2>Step 3 · Approve Test Orders &amp; View Tickets</h2><p class="muted">Approving a test order simulates payment verification. It generates separate, sequential demo ticket numbers and unique scannable QR codes.</p>
-<div class="row"><button id="refresh" class="secondary">Refresh Test Records</button><a href="/celebration.html" class="ticket">🎉 Go To Celebration Wheel</a></div>
+<div class="row"><button id="refresh" class="secondary">Refresh Test Records</button><a href="/celebration.html?source=sandbox" class="ticket">🎉 Spin Approved Practice Tickets</a></div>
 <div id="stats" class="notice" style="margin-top:12px"></div><div id="orders"></div></section>
 <section class="panel"><h2>Step 4 · Rehearse the Drawing</h2><p>In the celebration wheel, use <b>Load Sandbox Tickets</b> to retrieve these approved practice tickets from the database. Spin, hear the winner announced, and check its matching number here.</p><p class="muted">These demo entries will never appear in the real drawing or real order statistics.</p></section></div>
 </main><script>
