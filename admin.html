@@ -47,7 +47,8 @@ async function load(){
   const [summary,list]=await Promise.all([request('/api/admin/summary'),request('/api/admin/orders')]);
   salesEnabled=Boolean(summary.salesEnabled);emailConfigured=Boolean(summary.emailConfigured);
   byId('saleStatus').textContent=salesEnabled?'Paid entry controls are enabled; verify authorization and transactions before any confirmation.':'SAFE PREVIEW: Paid entries and confirmations are disabled.';
-  byId('emailStatus').textContent=emailConfigured?'Email delivery provider configured.':'Email delivery requires a verified sender and RESEND_API_KEY; no email can be sent yet.';
+  byId('emailStatus').textContent=summary.organizerNotificationsReady?'Organizer Gmail notifications are ready.':'Organizer notification inboxes saved ('+summary.organizerRecipientCount+'). Gmail sending is awaiting secure authorization.';
+  byId('emailStatus').textContent+=' Customer receipts: '+(emailConfigured?'email service configured.':'automatic email delivery not configured yet.');
   const names=[['orders','Total orders'],['pending_orders','Pending payments'],['reserved_tickets','Numbers reserved'],['issued_tickets','Verified tickets']];
   const root=byId('stats');root.replaceChildren();
   for(const [k,label] of names){const el=document.createElement('div');el.className='stat';const v=document.createElement('strong');v.textContent=summary.stats[k]||0;el.append(v,document.createTextNode(label));root.append(el)}

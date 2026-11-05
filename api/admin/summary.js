@@ -1,5 +1,6 @@
 const {db,entriesEnabled}=require('../../lib/db');
 const authorized=require('../../lib/admin-auth');
+const {configured:organizerEmailReady,recipients}=require('../../lib/order-mail');
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'Method not allowed'});}
@@ -23,6 +24,9 @@ module.exports=async function handler(req,res){
       recentEvents:events.rows,
       salesEnabled:entriesEnabled(),
       emailConfigured:Boolean(process.env.RESEND_API_KEY&&process.env.EMAIL_FROM&&process.env.SITE_URL),
+      organizerNotificationsReady:organizerEmailReady(),
+      organizerRecipientCount:recipients().length,
+      gmailSenderConfigured:Boolean(process.env.GMAIL_SMTP_USER),
       source:'who-dat-gives'
     });
   }catch(e){console.error('Admin summary error',e.code||'unknown');return res.status(500).json({error:'Unable to load summary'});}

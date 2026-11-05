@@ -1,5 +1,6 @@
 const {randomUUID,randomBytes}=require('crypto');
 const {db,checkoutReady}=require('../lib/db');
+const {notifyOrganizers}=require('../lib/order-mail');
 const tokenRegex=/^[0-9a-f]{64}$/i;
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','no-store, private');
@@ -33,6 +34,7 @@ module.exports=async function handler(req,res){
  if(email&&(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))return res.status(400).json({error:'Invalid email address.'});
  const id=randomUUID(),receiptToken=randomBytes(32).toString('hex'),amount=quantity*1500;
  const client=await db().connect();
+ let released=false;
  try{
   await client.query('BEGIN');
   // Serialize numbering across simultaneous orders; also block new reservations after the draw.
@@ -62,14 +64,17 @@ module.exports=async function handler(req,res){
   }
   await client.query("INSERT INTO raffle_audit_events(order_id,event_type,detail) VALUES($1,'ticket_numbers_reserved',jsonb_build_object('quantity',$2::integer,'payment_status','pending'))",[id,quantity]);
   await client.query('COMMIT');
-  return res.status(201).json({
+  client.release();released=true;
+  res.status(201).json({
    status:'pending_payment',quantity,amountCents:amount,paid:false,verified:false,
    tickets,ticketsReserved:quantity,receiptUrl:'/receipt.html?token='+receiptToken,
    message:'Numbers reserved. Payment confirmation is still required before entry is valid.'
   });
+  await notifyOrganizers(id,'reserved').catch(()=>{});
+  return;
  }catch(e){
   try{await client.query('ROLLBACK')}catch(_){}
   console.error('Order reservation failed',e.code||'unknown');
   return res.status(500).json({error:'Unable to reserve numbers. Please retry before paying.'});
- }finally{client.release()}
+ }finally{if(!released)client.release()}
 };
