@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#14100b"><meta name="robots" content="noindex">
+<title>Who Dat Celebration Wheel | Who Dat Gives</title>
+<style>
+:root{color-scheme:dark;--bg:#0e0b09;--gold:#efc260;--gold2:#ffdf9b;--muted:#cab89a;--border:#957038;--surface:#21180f}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 55% -10%,#74481785,transparent 45%),#0e0b09;color:#fff1db;font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+main{max-width:1050px;margin:auto;padding:20px 20px 65px}
+a{color:var(--gold)}.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:3px;color:var(--gold);font-weight:850}
+h1{font-size:clamp(36px,7vw,72px);line-height:1.03;letter-spacing:-.05em;margin:12px 0}h1 span{color:var(--gold)}
+.intro{font-size:16px;max-width:770px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.tabs{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}
+button{border:1px solid var(--border);border-radius:12px;padding:13px 19px;min-height:48px;background:#42301a;color:#fff2d7;font:inherit;font-weight:800;cursor:pointer}
+button[aria-pressed=true],button.gold{background:var(--gold);color:#24190a}
+button:disabled{opacity:.48;cursor:not-allowed}
+.layout{display:grid;grid-template-columns: minmax(0,1.05fr) minmax(300px,.95fr);gap:28px;align-items:start}
+.wheel-wrap{position:relative;max-width:600px;margin:auto;aspect-ratio:1;padding:25px}
+.ring{width:100%;height:100%;border-radius:50%;padding:9px;border:7px solid #d8a750;box-shadow:0 0 0 5px #483019,0 0 65px #ffce4830, inset 0 0 15px #000;background:#1b130c}
+canvas{width:100%;height:100%;display:block;border-radius:50%;transition:transform 5.2s cubic-bezier(.09,.84,.13,1);transform:rotate(0deg)}
+.pointer{position:absolute;top:4px;left:50%;transform:translateX(-50%);z-index:2;width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:40px solid var(--gold2);filter:drop-shadow(0 3px 4px #000)}
+.panel{background:#21190f;border:1px solid var(--border);border-radius:16px;padding:24px}
+.panel h2{margin:3px 0 11px;font-size:24px;color:var(--gold)}label{display:block;margin:10px 0 8px;font-weight:750}
+textarea,input{width:100%;background:#100d0a;border:1px solid #80633b;border-radius:10px;padding:13px;color:#fff1d5;font:inherit}
+textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:13px;color:var(--muted);line-height:1.5}.small{font-size:12px}
+.status{padding:12px 14px;background:#131009;border-left:4px solid var(--gold);margin:16px 0;line-height:1.5}
+.winner{background:linear-gradient(130deg,#edbe5e,#fbe6b5);color:#261905;border-radius:13px;padding:20px;text-align:center;margin-top:20px;display:none}
+.winner.show{display:block}.winner small{font-weight:900;letter-spacing:2px}.winner strong{display:block;font-size:clamp(28px,5vw,52px);overflow-wrap:anywhere;margin-top:8px}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.row button{flex:1}
+.footer{margin-top:35px;border-top:1px solid #664e2b;padding-top:18px;color:#a99475;font-size:12px;line-height:1.55}
+#real{display:none}.full{width:100%}.divider{height:1px;background:#7a592d;margin:24px 0}
+.confetti{position:fixed;top:-20px;width:10px;height:16px;pointer-events:none;z-index:10;animation:fall 3.5s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(900deg);opacity:0}}
+@media(max-width:800px){.layout{grid-template-columns:1fr}.panel{padding:18px}.wheel-wrap{padding:18px}}
+@media(prefers-reduced-motion:reduce){canvas{transition-duration:.5s}.confetti{animation-duration:.6s}}
+</style></head><body><main>
+<a href="/">← Back to Who Dat Gives</a>
+<p class="eyebrow">⚜ Who Dat Nation · New Orleans</p>
+<h1>THE <span>WHO DAT</span><br>CELEBRATION!</h1>
+<p class="intro">Turn the giveaway into a moment everyone remembers. Rehearse the drawing, bring the excitement, and celebrate the winning ticket together.</p>
+<div class="tabs">
+ <button id="demoTab" aria-pressed="true">🎉 Rehearsal Wheel</button>
+ <button id="officialTab" aria-pressed="false">🔒 Organizer Drawing</button>
+</div>
+<div class="layout">
+ <div>
+  <div class="wheel-wrap"><div class="pointer" aria-hidden="true"></div><div class="ring">
+   <canvas id="wheel" width="720" height="720" aria-label="Drawing wheel with entrant labels"></canvas>
+  </div></div>
+  <div id="winner" class="winner" role="status"><small id="winnerType">REHEARSAL RESULT</small><strong id="winnerName"></strong><p id="winnerNote"></p></div>
+ </div>
+ <div>
+  <section id="demo" class="panel">
+   <p class="eyebrow">Interactive celebration preview</p>
+   <h2>Build Your Wheel</h2>
+   <p class="hint">Enter one sample ticket number or nickname per line. Everyone gets one slice in this rehearsal. Nothing is saved or submitted.</p>
+   <label for="entries">Example participants</label>
+   <textarea id="entries" spellcheck="false">01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12</textarea>
+   <div class="row"><button id="update">Update Wheel</button><button id="spin" class="gold">Spin to Celebrate!</button></div>
+   <p id="demoStatus" class="status">Rehearsal mode: this does not issue tickets or select an official winner.</p>
+   <p class="hint">Names are for demonstration only. A real drawing, if enabled later, uses confirmed unique ticket records stored on the server—not this list.</p>
+  </section>
+  <section id="real" class="panel">
+   <p class="eyebrow">Organizer access only</p><h2>Official Ticket Drawing</h2>
+   <p class="hint">A real drawing is locked until confirmed tickets exist and the organizer separately enables an approved event. The server records one winner and prevents a second drawing.</p>
+   <label for="key">Private organizer key</label><input id="key" type="password" autocomplete="off" placeholder="Paste admin access key">
+   <div class="row"><button id="unlock">Load Verified Entries</button><button id="forget">Clear Key</button></div>
+   <p id="realStatus" class="status">Enter your key to view the official drawing status.</p>
+   <button id="realSpin" class="gold full" disabled>Run Official Drawing</button>
+   <p class="hint">Never show your administrator key during a livestream. The wheel animation illustrates a server-generated result; it does not determine who wins.</p>
+  </section>
+  <div class="panel" style="margin-top:16px">
+   <p class="eyebrow">Who Dat Together</p><h2>Make It a Celebration</h2>
+   <p class="hint">Count down from ten, spin the wheel, congratulate the winner, and capture the moment on video. It's about generosity, camaraderie, and sharing a Saints game-day experience.</p>
+  </div>
+ </div>
+</div>
+<p class="footer">Who Dat Gives · Independent community initiative, not affiliated with the NFL or New Orleans Saints. A rehearsal result is not an issued ticket or an official winner. Paid entries are not currently being accepted.</p>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const canvas=$('wheel'),ctx=canvas.getContext('2d'),spin=$('spin'),officialSpin=$('realSpin');
+let labels=[],currentRotation=0,animating=false,mode='demo',adminKey='',officialPool=[];
+const palette=['#c89c47','#513314','#e4bf7f','#8c6025','#271b12','#ad822e','#f2d38b','#665027'];
+function secureIndex(n){
+ if(n<1||n>4294967296)throw Error('Invalid entry count');
+ const range=4294967296,limit=Math.floor(range/n)*n;
+ const x=new Uint32Array(1);
+ do{crypto.getRandomValues(x)}while(x[0]>=limit);
+ return x[0]%n;
+}
+function displayLabels(arr){
+ labels=arr.slice();
+ const count=labels.length;
+ ctx.clearRect(0,0,720,720);
+ const r=342,cx=360,cy=360,step=2*Math.PI/count;
+ for(let i=0;i<count;i++){
+  const start=-Math.PI/2+i*step,end=start+step;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,end);ctx.closePath();
+  ctx.fillStyle=palette[i%palette.length];ctx.fill();
+  ctx.strokeStyle='#1d1209';ctx.lineWidth=2;ctx.stroke();
+  if(count<=36){
+   ctx.save();ctx.translate(cx,cy);ctx.rotate(start+step/2);
+   ctx.fillStyle=i%8===2||i%8===6?'#241503':'#fff5dd';ctx.font=(count>18?'bold 19px':'bold 26px')+' system-ui';
+   ctx.textAlign='right';ctx.textBaseline='middle';
+   ctx.fillText(String(labels[i]).slice(0,15),r-18,0,r*.7);
+   ctx.restore();
+  }
+ }
+ ctx.beginPath();ctx.arc(cx,cy,57,0,2*Math.PI);ctx.fillStyle='#21160c';ctx.fill();
+ ctx.strokeStyle='#f0c35d';ctx.lineWidth=10;ctx.stroke();
+ ctx.fillStyle='#f4d07d';ctx.font='bold 48px system-ui';ctx.textBaseline='middle';ctx.textAlign='center';ctx.fillText('⚜',cx,cy);
+ canvas.style.transition='none';canvas.style.transform='rotate(0deg)';void canvas.offsetWidth;
+ canvas.style.transition='';currentRotation=0;
+ $('winner').classList.remove('show');
+}
+function entriesFromText(){
+ const values=$('entries').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ if(values.length<2||values.length>48)throw Error('Enter between 2 and 48 rehearsal entries.');
+ return values.map(x=>x.slice(0,32));
+}
+function updateDemo(){
+ try{displayLabels(entriesFromText());$('demoStatus').textContent=labels.length+' example entries ready. Spin when you are ready.';return true}
+ catch(e){$('demoStatus').textContent=e.message;return false}
+}
+function confetti(){
+ for(let i=0;i<60;i++){let e=document.createElement('i');e.className='confetti';e.style.left=secureIndex(100)+'vw';e.style.background=palette[i%palette.length];e.style.animationDelay=(secureIndex(600)/1000)+'s';document.body.append(e);setTimeout(()=>e.remove(),4800)}
+}
+function turnTo(index,title,note,kind){
+ animating=true;spin.disabled=true;officialSpin.disabled=true;
+ const n=labels.length;let desired=((-(index+.5)*360/n)%360+360)%360;
+ let target=Math.ceil((currentRotation+2160-desired)/360)*360+desired;
+ if(target-currentRotation<1800)target+=360;
+ currentRotation=target;canvas.style.transform='rotate('+target+'deg)';
+ const ms=matchMedia('(prefers-reduced-motion:reduce)').matches?600:5400;
+ setTimeout(()=>{
+  $('winnerType').textContent=kind;$('winnerName').textContent=title;$('winnerNote').textContent=note;
+  $('winner').classList.add('show');confetti();
+  spin.disabled=false;
+  if(mode==='official')officialSpin.disabled=true;
+  animating=false;
+ },ms);
+}
+$('update').onclick=()=>{if(!animating)updateDemo()};
+spin.onclick=()=>{
+ if(animating||!updateDemo())return;
+ const i=secureIndex(labels.length);
+ turnTo(i,labels[i],'Sample result only. No ticket or prize has been awarded.','REHEARSAL CELEBRATION');
+};
+function setMode(next){
+ if(animating)return;
+ mode=next;$('demo').style.display=next==='demo'?'block':'none';$('real').style.display=next==='official'?'block':'none';
+ $('demoTab').setAttribute('aria-pressed',String(next==='demo'));$('officialTab').setAttribute('aria-pressed',String(next==='official'));
+ $('winner').classList.remove('show');
+ if(next==='demo')updateDemo();else displayLabels(Array.from({length:12},(_,i)=>'TICKET '+String(i+1).padStart(2,'0')));
+}
+$('demoTab').onclick=()=>setMode('demo');$('officialTab').onclick=()=>setMode('official');
+async function secureFetch(path,opts={}){
+ const r=await fetch(path,{...opts,headers:{Authorization:'Bearer '+adminKey,'Content-Type':'application/json'},cache:'no-store'});
+ const json=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(json.error||'Request failed ('+r.status+')');
+ return json;
+}
+function poolDisplay(numbers){
+ if(numbers.length<=24){const sorted=numbers.map(n=>'#'+String(n).padStart(2,'0'));displayLabels(sorted)}
+ else{displayLabels(numbers.slice(0,23).map(n=>'#'+String(n).padStart(2,'0')).concat(['+'+(numbers.length-23)+' more']))}
+}
+$('unlock').onclick=async()=>{
+ adminKey=$('key').value.trim();$('key').value='';officialSpin.disabled=true;
+ if(!adminKey){$('realStatus').textContent='Enter the organizer key.';return}
+ try{
+  const o=await secureFetch('/api/admin/draw-pool');officialPool=o.numbers||[];
+  if(o.drawn){$('realStatus').textContent='An official result has already been recorded: ticket #'+o.winnerNumber+'. No redraw is available.';return}
+  if(!o.available){$('realStatus').textContent=o.reason||'There are no eligible verified tickets or the official drawing is disabled.';return}
+  poolDisplay(officialPool);
+  $('realStatus').textContent=officialPool.length+' confirmed unique tickets loaded from the server. Only the server determines the winner.';
+  officialSpin.disabled=false;
+ }catch(e){$('realStatus').textContent=e.message;adminKey=''}
+};
+$('forget').onclick=()=>{adminKey='';officialPool=[];$('key').value='';officialSpin.disabled=true;$('realStatus').textContent='Administrator key cleared.'};
+officialSpin.onclick=async()=>{
+ if(animating||!adminKey||!officialPool.length)return;
+ if(!confirm('Run the ONE official random drawing now? A permanent auditable winner will be selected, and another draw will be blocked.'))return;
+ officialSpin.disabled=true;
+ try{
+  const result=await secureFetch('/api/admin/draw',{method:'POST',body:'{}'});
+  const winnerLabel='#'+String(result.winnerNumber).padStart(2,'0');
+  let visual;
+  if(officialPool.length<=24){visual=officialPool.indexOf(result.winnerNumber)}
+  else{labels=officialPool.slice(0,23).map(n=>'#'+String(n).padStart(2,'0')).concat([winnerLabel]);displayLabels(labels);visual=labels.length-1}
+  if(visual<0)throw Error('Winner is recorded on the server but not in the displayed pool. Check the organizer dashboard.');
+  $('realStatus').textContent='Official result recorded server-side. The wheel is now displaying the result.';
+  turnTo(visual,'TICKET '+winnerLabel,'Official result recorded from '+result.count+' confirmed tickets.','OFFICIAL WINNER');
+ }catch(e){$('realStatus').textContent=e.message}
+};
+updateDemo();
+})();
+</script></body></html>

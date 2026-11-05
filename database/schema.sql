@@ -37,3 +37,12 @@ CREATE TABLE IF NOT EXISTS raffle_email_deliveries (
   sent_at TIMESTAMPTZ,
   error_code TEXT
 );
+
+-- One-time auditable official drawing: cryptographic selection and no redraw.
+CREATE TABLE IF NOT EXISTS raffle_draws (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id=1),
+  winner_ticket BIGINT NOT NULL REFERENCES raffle_tickets(number),
+  pool_size INTEGER NOT NULL CHECK (pool_size>0),
+  selection_method TEXT NOT NULL DEFAULT 'node_crypto_randomInt',
+  drawn_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
