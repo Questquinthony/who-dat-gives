@@ -1,17 +1,18 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>DEMO Ticket | Who Dat Gives</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#15100b;color:#fff0d3;font:16px system-ui,sans-serif;padding:24px}main{max-width:510px;margin:auto}a{color:#f2c46a}.status{margin:20px 0;padding:14px;border:1px solid #997036;border-radius:9px}.ticket{background:linear-gradient(140deg,#fff6d7,#cda458);border-radius:18px;color:#2d1b09;text-align:center;overflow:hidden;border:4px solid #f2c46a}.top{padding:17px;background:#221709;color:#f2cb79;font-weight:900;letter-spacing:2px}.body{padding:25px 16px}.body h1{font-size:37px;line-height:.95}.number{font-size:clamp(75px,18vw,114px);font-weight:1000;line-height:1.1}.stamp{font-size:20px;letter-spacing:2px;font-weight:1000;color:#932b0d}#qr{background:white;padding:8px;width:185px;height:185px;margin:15px auto}.small{font-size:12px}.hide{display:none}@media print{body{background:white;color:black}nav{display:none}}</style></head>
 <body><main><nav><a href="/sandbox.html">← Practice Orders</a></nav><p>⚜ WHO DAT GIVES — TEST ONLY</p><p id="status" class="status">Checking example ticket...</p>
-<article id="ticket" class="ticket hide"><div class="top">WHO DAT GIVES · PRACTICE TICKET</div><div class="body"><div class="stamp">DEMO · NOT A REAL ENTRY</div><h1>WHO DAT<br>NATION!</h1><div id="number" class="number"></div><b>PRACTICE TICKET NUMBER</b><div><img id="qr" alt="Practice ticket verification QR code"></div><p class="small">This QR opens the test ticket verification page. It cannot be used as a real raffle entry or for admission.</p><div class="stamp">VOID FOR ENTRY</div></div></article>
+<article id="ticket" class="ticket hide"><div class="top">WHO DAT GIVES · PRACTICE TICKET</div><div class="body"><div class="stamp">DEMO · NOT A REAL ENTRY</div><h1>WHO DAT<br>NATION!</h1><div id="number" class="number"></div><b>PRACTICE TICKET NUMBER</b><div id="qrWrap"><img id="qr" alt="Practice ticket verification QR code"></div><p class="small">This QR opens the test ticket verification page. It cannot be used as a real raffle entry or for admission.</p><div class="stamp">VOID FOR ENTRY</div></div></article>
 <p class="small">No payment collected · No prize eligibility · Independent community initiative</p></main><script>
 (async function(){
  const code=new URLSearchParams(location.search).get('code')||'',status=document.getElementById('status');
  if(!/^[a-f0-9]{48}$/.test(code)){status.textContent='Invalid practice link.';return}
  try{
   const r=await fetch('/api/tickets/verify?demo=1&code='+encodeURIComponent(code),{cache:'no-store'}),v=await r.json();
-  if(!r.ok||!v.valid||!v.sandbox){status.textContent='Practice ticket not found.';return}
-  status.textContent='✓ Verified sample record (DEMO ONLY)';
+  if(!r.ok||!v.number||!v.sandbox){status.textContent='Practice ticket not found.';return}
+  status.textContent=v.valid?'✓ Verified sample record (DEMO ONLY)':'RESERVED NUMBER · NOT VERIFIED (DEMO ONLY)';
   document.getElementById('number').textContent=String(v.number).padStart(2,'0');
-  document.getElementById('qr').src='/api/tickets/qr?demo=1&code='+encodeURIComponent(code);
+  if(v.valid)document.getElementById('qr').src='/api/tickets/qr?demo=1&code='+encodeURIComponent(code);
+  else document.getElementById('qrWrap').hidden=true;
   document.getElementById('ticket').classList.remove('hide');
  }catch(e){status.textContent='Practice verification temporarily unavailable.'}
 })();

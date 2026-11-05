@@ -22,9 +22,24 @@ module.exports=async function handler(req,res){
   if(action==='create'){
    const nickname=String(req.body?.nickname||'').trim(),quantity=Number(req.body?.quantity);
    if(nickname.length<2||nickname.length>60||!Number.isInteger(quantity)||quantity<1||quantity>100)return res.status(400).json({error:'Enter a sample nickname (2–60 characters) and 1–100 test entries.'});
-   const id=randomUUID();
-   await db().query("INSERT INTO raffle_demo_orders(id,nickname,quantity,status) VALUES($1,$2,$3,'pending')",[id,nickname,quantity]);
-   return res.status(201).json({sandbox:true,orderId:id,status:'pending',quantity,paid:false,ticketsIssued:0});
+   const id=randomUUID(),client=await db().connect();
+   try{
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(2026111502)');
+    await client.query("INSERT INTO raffle_demo_orders(id,nickname,quantity,status) VALUES($1,$2,$3,'pending')",[id,nickname,quantity]);
+    const tickets=[];
+    for(let i=0;i<quantity;i++){
+     const code=randomBytes(24).toString('hex');
+     const t=await client.query('INSERT INTO raffle_demo_tickets(order_id,verification_code) VALUES($1,$2) RETURNING number',[id,code]);
+     tickets.push({number:Number(t.rows[0].number),code});
+    }
+    await client.query('COMMIT');
+    return res.status(201).json({sandbox:true,orderId:id,status:'pending',quantity,paid:false,confirmed:false,ticketsReserved:tickets.length,tickets});
+   }catch(e){
+    try{await client.query('ROLLBACK')}catch(_){}
+    console.error('Sandbox reservation failed',e.code||'unknown');
+    return res.status(500).json({error:'Unable to reserve practice ticket numbers'});
+   }finally{client.release()}
   }
   if(action==='confirm'){
    const id=String(req.body?.orderId||'');
@@ -35,19 +50,15 @@ module.exports=async function handler(req,res){
     const order=await client.query('SELECT id,quantity,status FROM raffle_demo_orders WHERE id=$1 FOR UPDATE',[id]);
     if(!order.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Test order not found'})}
     if(order.rows[0].status!=='pending'){await client.query('ROLLBACK');return res.status(409).json({error:'Test order already approved'})}
+    const tickets=await client.query('SELECT number,verification_code FROM raffle_demo_tickets WHERE order_id=$1 ORDER BY number FOR UPDATE',[id]);
+    if(tickets.rowCount!==order.rows[0].quantity){await client.query('ROLLBACK');return res.status(409).json({error:'Reserved number count mismatch'})}
     await client.query("UPDATE raffle_demo_orders SET status='confirmed',confirmed_at=NOW() WHERE id=$1",[id]);
-    const tickets=[];
-    for(let i=0;i<order.rows[0].quantity;i++){
-     const code=randomBytes(24).toString('hex');
-     const q=await client.query("INSERT INTO raffle_demo_tickets(order_id,verification_code) VALUES($1,$2) RETURNING number",[id,code]);
-     tickets.push({number:Number(q.rows[0].number),code});
-    }
     await client.query('COMMIT');
-    return res.status(200).json({sandbox:true,status:'confirmed',orderId:id,tickets});
+    return res.status(200).json({sandbox:true,status:'confirmed',orderId:id,tickets:tickets.rows.map(t=>({number:Number(t.number),code:t.verification_code}))});
    }catch(e){
     try{await client.query('ROLLBACK')}catch(_){}
-    console.error('Sandbox approval error',e.code||'unknown');
-    return res.status(500).json({error:'Unable to issue practice tickets'});
+    console.error('Sandbox approval failed',e.code||'unknown');
+    return res.status(500).json({error:'Unable to approve practice tickets'});
    }finally{client.release()}
   }
   return res.status(400).json({error:'Unknown sandbox operation'});

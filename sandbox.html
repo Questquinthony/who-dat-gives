@@ -24,7 +24,7 @@ button.secondary{background:#493218;color:#fff0d2}button:disabled{opacity:.45;cu
 <section class="panel"><h2>Step 2 · Create a Sample Order</h2><p class="muted">Pretend someone orders multiple entries. Nothing is charged and no real order is created.</p>
 <div class="row"><label>Sample nickname<input id="nickname" placeholder="Example: Who Dat Fan" maxlength="60"></label><label class="quantity">Number of test tickets<input id="quantity" type="number" min="1" max="100" value="3"></label><button id="create">Create Test Order</button></div>
 <p id="createStatus" role="status" class="muted"></p></section>
-<section class="panel"><h2>Step 3 · Approve Test Orders &amp; View Tickets</h2><p class="muted">Approving a test order simulates payment verification. It generates separate, sequential demo ticket numbers and unique scannable QR codes.</p>
+<section class="panel"><h2>Step 3 · Approve Test Orders &amp; View Tickets</h2><p class="muted">Sample ticket numbers are reserved instantly when an order is created. Approval only changes their status to verified, without changing any number. QR verification is active after approval.</p>
 <div class="row"><button id="refresh" class="secondary">Refresh Test Records</button><a href="/celebration.html?source=sandbox" class="ticket">🎉 Spin Approved Practice Tickets</a></div>
 <div id="stats" class="notice" style="margin-top:12px"></div><div id="orders"></div></section>
 <section class="panel"><h2>Step 4 · Rehearse the Drawing</h2><p>In the celebration wheel, use <b>Load Sandbox Tickets</b> to retrieve these approved practice tickets from the database. Spin, hear the winner announced, and check its matching number here.</p><p class="muted">These demo entries will never appear in the real drawing or real order statistics.</p></section></div>
@@ -42,7 +42,7 @@ async function req(body){
 async function refresh(){
  const data=await req();
  el('workspace').classList.remove('hide');
- el('stats').textContent=data.stats.total_orders+' test orders · '+data.stats.issued_tickets+' practice tickets issued · $0 collected';
+ el('stats').textContent=data.stats.total_orders+' test orders · '+data.stats.issued_tickets+' numbers reserved · $0 collected';
  const root=el('orders');root.replaceChildren();
  if(!data.orders.length){const p=document.createElement('p');p.className='muted';p.textContent='No practice orders yet. Create your first test order above.';root.append(p)}
  for(const order of data.orders){
@@ -52,20 +52,21 @@ async function refresh(){
   card.append(heading,detail);
   if(order.status==='pending'){
    const btn=document.createElement('button');btn.textContent='Approve Practice Order';btn.onclick=async()=>{
-    if(!confirm('Issue '+order.quantity+' PRACTICE ticket(s)? This does NOT verify or charge any payment.'))return;
+    if(!confirm('Approve the '+order.quantity+' ALREADY RESERVED practice ticket(s)? This simulates payment verification. No money changes hands.'))return;
     btn.disabled=true;
-    try{await req({action:'confirm',orderId:order.id});await refresh();el('createStatus').textContent='Practice tickets issued successfully.'}
+    try{await req({action:'confirm',orderId:order.id});await refresh();el('createStatus').textContent='Already reserved numbers are now verified. No new numbers were created.'}
     catch(e){btn.disabled=false;el('createStatus').textContent=e.message}
    };
    card.append(btn);
-  }else{
-   const label=document.createElement('p');label.className='muted';label.textContent='Open a ticket to see its unique number and QR verification.';
-   card.append(label);
-   for(const t of order.tickets){
-    const a=document.createElement('a');a.className='ticket';a.target='_blank';a.rel='noopener noreferrer';
-    a.href='/sandbox-ticket.html?code='+encodeURIComponent(t.code);
-    a.textContent='DEMO #'+String(t.number).padStart(2,'0');card.append(a)
-   }
+  }
+  const label=document.createElement('p');label.className='muted';
+  label.textContent=order.status==='confirmed'?'Payment simulated as verified · ticket numbers unchanged.':'Numbers reserved immediately · not verified yet.';
+  card.append(label);
+  for(const t of order.tickets){
+   const a=document.createElement('a');a.className='ticket';a.target='_blank';a.rel='noopener noreferrer';
+   a.href='/sandbox-ticket.html?code='+encodeURIComponent(t.code);
+   a.textContent=(order.status==='confirmed'?'VERIFIED #':'RESERVED #')+String(t.number).padStart(2,'0');
+   card.append(a)
   }
   root.append(card)
  }
@@ -85,7 +86,7 @@ el('create').onclick=async()=>{
  el('create').disabled=true;el('createStatus').textContent='Creating practice order...';
  try{
   await req({action:'create',nickname,quantity});
-  el('createStatus').textContent='Sample order created. Use Approve Practice Order below to issue demo tickets.';
+  el('createStatus').textContent='Ticket numbers reserved immediately! The numbers stay the same after you approve the practice order.';
   el('nickname').value='';await refresh();
  }catch(e){el('createStatus').textContent=e.message}
  finally{el('create').disabled=false}
