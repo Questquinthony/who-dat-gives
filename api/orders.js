@@ -1,5 +1,5 @@
 const {randomUUID,randomBytes}=require('crypto');
-const {db,entriesEnabled}=require('../lib/db');
+const {db,checkoutReady}=require('../lib/db');
 const tokenRegex=/^[0-9a-f]{64}$/i;
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','no-store, private');
@@ -16,15 +16,18 @@ module.exports=async function handler(req,res){
     quantity:o.quantity,amountCents:o.amount_cents,status:o.status,
     reserved:o.status==='pending_payment',confirmed:o.status==='confirmed',
     tickets:o.tickets.map(t=>({number:Number(t.number),url:'/ticket.html?code='+t.code})),
-    createdAt:o.created_at
+    createdAt:o.created_at,
+    paymentMethod:'Zelle',paymentRecipient:String(process.env.ZELLE_RECIPIENT_PUBLIC||''),
+    paymentMemo:'WDG-'+token.slice(0,10).toUpperCase()
    });
   }catch(e){console.error('Receipt lookup failed',e.code||'unknown');return res.status(500).json({error:'Unable to load receipt'})}
  }
  if(req.method!=='POST'){res.setHeader('Allow','GET, POST');return res.status(405).json({error:'Method not allowed'})}
- if(!entriesEnabled())return res.status(503).json({error:'Entries are not open. No payments are being accepted.'});
+ if(!checkoutReady())return res.status(503).json({error:'Entries are not open. No payments are being accepted.'});
  const b=req.body||{},name=String(b.name||'').trim(),
   phone=String(b.phone||'').replace(/[^0-9+() -]/g,'').trim(),
-  email=b.email?String(b.email).trim().toLowerCase():null,quantity=Number(b.quantity);
+  email=b.email?String(b.email).trim().toLowerCase():null,quantity=Number(b.quantity),
+  requestKey=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(b.requestKey||''))?String(b.requestKey):null;
  if(name.length<2||name.length>100||phone.length<7||phone.length>25||!Number.isInteger(quantity)||quantity<1||quantity>100)
   return res.status(400).json({error:'Provide a valid name, phone, and ticket quantity (1–100 per order).'});
  if(email&&(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))return res.status(400).json({error:'Invalid email address.'});
@@ -36,9 +39,20 @@ module.exports=async function handler(req,res){
   await client.query('SELECT pg_advisory_xact_lock(2026111501)');
   const drawn=await client.query('SELECT 1 FROM raffle_draws WHERE id=1');
   if(drawn.rowCount){await client.query('ROLLBACK');return res.status(409).json({error:'The drawing is complete; new orders are closed.'})}
+  if(requestKey){
+   const prior=await client.query('SELECT receipt_token,quantity,amount_cents FROM raffle_orders WHERE request_key=$1',[requestKey]);
+   if(prior.rowCount){
+    await client.query('ROLLBACK');
+    return res.status(200).json({
+     status:'restored',quantity:prior.rows[0].quantity,amountCents:prior.rows[0].amount_cents,
+     receiptUrl:'/receipt.html?token='+prior.rows[0].receipt_token,
+     duplicateSubmission:true,message:'Existing order restored. No duplicate numbers reserved.'
+    });
+   }
+  }
   await client.query(
-   "INSERT INTO raffle_orders(id,buyer_name,phone,email,quantity,amount_cents,status,receipt_token) VALUES($1,$2,$3,$4,$5,$6,'pending_payment',$7)",
-   [id,name,phone,email,quantity,amount,receiptToken]
+   "INSERT INTO raffle_orders(id,buyer_name,phone,email,quantity,amount_cents,status,receipt_token,request_key) VALUES($1,$2,$3,$4,$5,$6,'pending_payment',$7,$8)",
+   [id,name,phone,email,quantity,amount,receiptToken,requestKey]
   );
   const tickets=[];
   for(let i=0;i<quantity;i++){
