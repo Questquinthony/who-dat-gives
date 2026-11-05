@@ -1,5 +1,5 @@
 const {randomBytes,timingSafeEqual}=require('crypto');
-const {db,entriesEnabled}=require('../_db');
+const {db,entriesEnabled}=require('../../lib/db');
 function secureEq(a,b){
   const aBuf=Buffer.from(String(a||'')), bBuf=Buffer.from(String(b||''));
   return aBuf.length===bBuf.length && timingSafeEqual(aBuf,bBuf);
