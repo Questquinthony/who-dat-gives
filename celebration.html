@@ -40,7 +40,9 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
 <div class="tabs">
  <button id="demoTab" aria-pressed="true">🎉 Rehearsal Wheel</button>
  <button id="officialTab" aria-pressed="false">🔒 Organizer Drawing</button>
+ <button id="soundToggle" type="button" aria-pressed="true" aria-label="Turn celebration sounds off">🔊 Sound On</button>
 </div>
+<p class="hint" style="margin-top:-13px">Sound plays when you tap Spin. Use Sound On / Off to control clicks, applause, and the winner announcement.</p>
 <div class="layout">
  <div>
   <div class="wheel-wrap"><div class="pointer" aria-hidden="true"></div><div class="ring">
@@ -91,6 +93,7 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
 const $=id=>document.getElementById(id);
 const canvas=$('wheel'),ctx=canvas.getContext('2d'),spin=$('spin'),officialSpin=$('realSpin');
 let labels=[],currentRotation=0,animating=false,mode='demo',adminKey='',officialPool=[];
+let soundOn=true,audioContext=null,tickFrame=0;
 const palette=['#c89c47','#513314','#e4bf7f','#8c6025','#271b12','#ad822e','#f2d38b','#665027'];
 function secureIndex(n){
  if(n<1||n>4294967296)throw Error('Invalid entry count');
@@ -133,6 +136,121 @@ function updateDemo(){
  try{displayLabels(entriesFromText());$('demoStatus').textContent=labels.length+' example entries ready. Spin when you are ready.';return true}
  catch(e){$('demoStatus').textContent=e.message;return false}
 }
+
+// Original, self-contained audio effects; no external sound files or copyrighted recordings.
+// Web Audio is unlocked by the user's button tap, as required by mobile browsers.
+function unlockAudio(){
+ if(!soundOn)return null;
+ try{
+  if(!audioContext){
+   const Audio=window.AudioContext||window.webkitAudioContext;
+   if(!Audio)return null;
+   audioContext=new Audio();
+  }
+  if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+  return audioContext;
+ }catch(e){return null}
+}
+function tickSound(){
+ const a=audioContext;
+ if(!soundOn||!a||a.state!=='running')return;
+ try{
+  const t=a.currentTime,o=a.createOscillator(),g=a.createGain(),f=a.createBiquadFilter();
+  o.type='triangle';o.frequency.setValueAtTime(1550,t);o.frequency.exponentialRampToValueAtTime(620,t+.022);
+  f.type='lowpass';f.frequency.value=2300;
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.085,t+.003);
+  g.gain.exponentialRampToValueAtTime(.0001,t+.033);
+  o.connect(f);f.connect(g);g.connect(a.destination);o.start(t);o.stop(t+.037);
+ }catch(e){}
+}
+function wheelAngle(){
+ const transform=getComputedStyle(canvas).transform;
+ if(!transform||transform==='none')return 0;
+ const parts=transform.match(/matrix(?:3d)?\(([^)]+)\)/);
+ if(!parts)return 0;
+ const vals=parts[1].split(',').map(Number);
+ return (Math.atan2(vals[1],vals[0])*180/Math.PI+360)%360;
+}
+function trackWheelClicks(duration){
+ if(tickFrame)cancelAnimationFrame(tickFrame);
+ const start=performance.now(),step=360/Math.max(2,labels.length);
+ let previous=wheelAngle(),distance=0,lastTick=0;
+ function frame(now){
+  if(!animating||now-start>duration){tickFrame=0;return}
+  const angle=wheelAngle(),delta=(angle-previous+360)%360;
+  previous=angle;distance+=delta;
+  if(distance>=step){
+   distance%=step;
+   if(now-lastTick>42){tickSound();lastTick=now}
+  }
+  tickFrame=requestAnimationFrame(frame);
+ }
+ tickFrame=requestAnimationFrame(frame);
+}
+function applauseAndCheer(){
+ const a=audioContext;
+ if(!soundOn||!a||a.state!=='running')return;
+ try{
+  const sr=a.sampleRate,b=a.createBuffer(1,Math.ceil(sr*.16),sr),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1);
+  const start=a.currentTime+.02;
+  // Layer small, sharp randomized claps to evoke a short applauding crowd.
+  for(let i=0;i<90;i++){
+   const t=start+Math.random()*2.7;
+   const source=a.createBufferSource(),filter=a.createBiquadFilter(),gain=a.createGain();
+   source.buffer=b;source.playbackRate.value=.83+Math.random()*.45;
+   filter.type='highpass';filter.frequency.value=650+Math.random()*1300;
+   const level=.015+Math.random()*.038;
+   gain.gain.setValueAtTime(.0001,t);
+   gain.gain.exponentialRampToValueAtTime(level,t+.006);
+   gain.gain.exponentialRampToValueAtTime(.0001,t+.08+Math.random()*.05);
+   source.connect(filter);filter.connect(gain);gain.connect(a.destination);
+   source.start(t);source.stop(t+.14);
+  }
+  // A light, rising celebratory crowd wash behind the applause.
+  for(let i=0;i<6;i++){
+   const t=start+.1+Math.random()*.6,source=a.createBufferSource(),filter=a.createBiquadFilter(),gain=a.createGain();
+   source.buffer=b;source.loop=true;
+   filter.type='bandpass';filter.frequency.value=650+Math.random()*500;filter.Q.value=.7;
+   gain.gain.setValueAtTime(.0001,t);
+   gain.gain.linearRampToValueAtTime(.025,t+.15);
+   gain.gain.setValueAtTime(.025,t+.65);
+   gain.gain.linearRampToValueAtTime(.0001,t+1.35);
+   source.connect(filter);filter.connect(gain);gain.connect(a.destination);source.start(t);source.stop(t+1.4);
+  }
+ }catch(e){}
+}
+function winnerAnnouncement(title){
+ const raw=String(title).trim();
+ const match=raw.match(/^(?:TICKET\s*(?:NUMBER\s*)?)?#?\s*(\d+)$/i);
+ if(match){
+  const number=String(Number(match[1]));
+  return {visible:'WINNER! TICKET #'+match[1],spoken:'Winner! Ticket number '+number+'!'};
+ }
+ return {visible:'WINNER! '+raw,spoken:'Winner! '+raw+'!'};
+}
+function announceWinner(phrase){
+ if(!soundOn)return;
+ applauseAndCheer();
+ if('speechSynthesis' in window){
+  try{
+   const voice=new SpeechSynthesisUtterance(phrase);
+   voice.lang='en-US';voice.rate=.91;voice.pitch=1.03;voice.volume=1;
+   speechSynthesis.cancel();
+   speechSynthesis.speak(voice);
+  }catch(e){}
+ }
+}
+$('soundToggle').onclick=()=>{
+ soundOn=!soundOn;
+ const button=$('soundToggle');
+ button.textContent=soundOn?'🔊 Sound On':'🔇 Sound Off';
+ button.setAttribute('aria-pressed',String(soundOn));
+ button.setAttribute('aria-label',soundOn?'Turn celebration sounds off':'Turn celebration sounds on');
+ if(soundOn)unlockAudio();
+ else if('speechSynthesis' in window)try{speechSynthesis.cancel()}catch(e){}
+};
+
 function confetti(){
  for(let i=0;i<60;i++){let e=document.createElement('i');e.className='confetti';e.style.left=secureIndex(100)+'vw';e.style.background=palette[i%palette.length];e.style.animationDelay=(secureIndex(600)/1000)+'s';document.body.append(e);setTimeout(()=>e.remove(),4800)}
 }
@@ -141,11 +259,14 @@ function turnTo(index,title,note,kind){
  const n=labels.length;let desired=((-(index+.5)*360/n)%360+360)%360;
  let target=Math.ceil((currentRotation+2160-desired)/360)*360+desired;
  if(target-currentRotation<1800)target+=360;
+ unlockAudio();
  currentRotation=target;canvas.style.transform='rotate('+target+'deg)';
  const ms=matchMedia('(prefers-reduced-motion:reduce)').matches?600:5400;
+ if(soundOn)trackWheelClicks(ms);
  setTimeout(()=>{
-  $('winnerType').textContent=kind;$('winnerName').textContent=title;$('winnerNote').textContent=note;
-  $('winner').classList.add('show');confetti();
+  const announcement=winnerAnnouncement(title);
+  $('winnerType').textContent=kind;$('winnerName').textContent=announcement.visible;$('winnerNote').textContent=note;
+  $('winner').classList.add('show');confetti();announceWinner(announcement.spoken);
   spin.disabled=false;
   if(mode==='official')officialSpin.disabled=true;
   animating=false;
@@ -153,7 +274,9 @@ function turnTo(index,title,note,kind){
 }
 $('update').onclick=()=>{if(!animating)updateDemo()};
 spin.onclick=()=>{
- if(animating||!updateDemo())return;
+ if(animating)return;
+ unlockAudio();
+ if(!updateDemo())return;
  const i=secureIndex(labels.length);
  turnTo(i,labels[i],'Sample result only. No ticket or prize has been awarded.','REHEARSAL CELEBRATION');
 };
@@ -190,6 +313,7 @@ $('unlock').onclick=async()=>{
 $('forget').onclick=()=>{adminKey='';officialPool=[];$('key').value='';officialSpin.disabled=true;$('realStatus').textContent='Administrator key cleared.'};
 officialSpin.onclick=async()=>{
  if(animating||!adminKey||!officialPool.length)return;
+ unlockAudio();
  if(!confirm('Run the ONE official random drawing now? A permanent auditable winner will be selected, and another draw will be blocked.'))return;
  officialSpin.disabled=true;
  try{
