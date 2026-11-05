@@ -21,10 +21,10 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
 .confetti{position:fixed;top:-19px;width:9px;height:17px;pointer-events:none;z-index:12;animation:fall 3s linear forwards}@keyframes fall{to{transform:translateY(110vh) rotate(820deg);opacity:0}}
 @media(max-width:730px){header nav{display:none}.hero,.grid,.cards{grid-template-columns:1fr}.hero{padding:18px 0 31px}h1{font-size:62px}.hero p{font-size:16px}.poster{width:100%;max-width:450px;margin:0 auto;min-width:0;min-height:0;aspect-ratio:1404/1536;align-self:stretch;justify-self:stretch}section.details,section.entry{padding:32px 0}.panel{padding:20px}}
 </style></head><body>
-<div class="notice">DESIGN PREVIEW ONLY — NO PAYMENTS OR VALID RAFFLE TICKETS</div>
+<div id="siteNotice" class="notice">DESIGN PREVIEW ONLY — NO PAYMENTS OR VALID RAFFLE TICKETS</div>
 <header class="wrap"><div class="brand"><div class="fleur">⚜</div><div>Who Dat Gives<small>Saints Raffle Event</small></div></div><nav><a href="#details">Game Details</a><a href="#entry">Ticket Preview</a></nav></header>
 <main>
-<div class="wrap hero"><div><div class="eyebrow">⚜ Who Dat Nation · New Orleans</div><h1>SAINTS<br><em>RAFFLE!</em></h1><p>Two premium Saints seats. One unforgettable game day. Enjoy your Saints up close and personal!</p><div class="buttons"><a class="cta" href="#entry">View Ticket Preview</a><a class="second" href="#details">See Game Details</a></div><p class="previewtext">Paid entries are not open. This is an interactive design demonstration.</p></div>
+<div class="wrap hero"><div><div class="eyebrow">⚜ Who Dat Nation · New Orleans</div><h1>SAINTS<br><em>RAFFLE!</em></h1><p>Two premium Saints seats. One unforgettable game day. Enjoy your Saints up close and personal!</p><div class="buttons"><a class="cta" href="#entry">View Ticket Preview</a><a class="second" href="#details">See Game Details</a></div><p class="previewtext" id="heroPreview">Paid entries are not open. This is an interactive design demonstration.</p></div>
 <div class="poster"><div class="fallback"><span>⚜</span>SAINTS RAFFLE<small>WHO DAT NATION</small></div><img src="/assets/saints-raffle-artwork.jpg" alt="Who Dat Gives original black-and-gold Saints raffle artwork" onerror="this.style.display='none'"></div></div>
 <div class="ribbon"><strong>SAINTS VS. CAROLINA PANTHERS</strong><div class="subline">SUNDAY · NOVEMBER 15, 2026 · NOON CST · CAESARS SUPERDOME</div></div>
 <section class="wrap details" id="details"><div class="eyebrow">The Game Day Experience</div><h2 class="sect-title">Two Premium Seats. One Big Sunday.</h2><p class="subcopy">Who Dat Gives celebrates New Orleans football and community spirit. The event rules and eligibility are being finalized before entries open.</p><div class="cards">
@@ -32,8 +32,8 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
 <div class="card"><strong>2</strong><b>Premium Seats</b><p>Two seats to see the Saints take on the Panthers. Prize documentation to be confirmed.</p></div>
 <div class="card"><strong>NOV 12</strong><b>Planned Drawing Day</b><p>Thursday before the November 15 game. Exact time and selection rules will be announced.</p></div>
 </div></section>
-<section class="wrap entry" id="entry"><div class="eyebrow">Ticket Experience Preview</div><h2 class="sect-title">Your Number. Your Chance.</h2><p class="subcopy">Try the sample quantity selector and ticket preview below. Nothing is submitted, saved or charged. The display numbers are examples only.</p><div class="grid">
-<div class="panel"><h3>Sample Entry Form</h3><p class="hint">SIMULATION — NO REAL ORDERS</p><div class="field"><label for="name">Name (demo only)</label><input id="name" placeholder="Your name" autocomplete="off"></div><div class="field"><label for="phone">Phone (demo only)</label><input id="phone" type="tel" placeholder="Your phone" autocomplete="off"></div><div class="field"><label for="email">Email (optional demo)</label><input id="email" type="email" placeholder="Your email" autocomplete="off"></div><div class="field"><label for="quantity">Example number of entries</label><div class="quantity"><button type="button" id="minus" aria-label="Decrease quantity">−</button><input type="number" min="1" max="999" value="1" id="quantity"><button type="button" id="plus" aria-label="Increase quantity">+</button></div></div><div class="total"><b>Illustrative amount</b><strong id="amount">$15</strong></div><button type="button" class="cta full" id="demo">View My Sample Ticket</button><p class="tiny">This page does not accept payments, register entrants, record personal information, generate order IDs or send email confirmations.</p></div>
+<section class="wrap entry" id="entry"><div class="eyebrow">Ticket Experience Preview</div><h2 class="sect-title">Your Number. Your Chance.</h2><p class="subcopy" id="entryAbout">Try the sample quantity selector and ticket preview below. Nothing is submitted, saved or charged. The display numbers are examples only.</p><div class="grid">
+<div class="panel"><h3 id="entryHeading">Sample Entry Form</h3><p id="entryHint" class="hint">SIMULATION — NO REAL ORDERS</p><div class="field"><label for="name" id="nameLabel">Name (demo only)</label><input id="name" placeholder="Your name" autocomplete="off"></div><div class="field"><label for="phone" id="phoneLabel">Phone (demo only)</label><input id="phone" type="tel" placeholder="Your phone" autocomplete="off"></div><div class="field"><label for="email" id="emailLabel">Email (optional demo)</label><input id="email" type="email" placeholder="Your email" autocomplete="off"></div><div class="field"><label for="quantity" id="quantityLabel">Example number of entries</label><div class="quantity"><button type="button" id="minus" aria-label="Decrease quantity">−</button><input type="number" min="1" max="999" value="1" id="quantity"><button type="button" id="plus" aria-label="Increase quantity">+</button></div></div><div class="total"><b>Illustrative amount</b><strong id="amount">$15</strong></div><button type="button" class="cta full" id="demo">View My Sample Ticket</button><p class="tiny" id="entryFoot">This page does not accept payments, register entrants, record personal information, generate order IDs or send email confirmations.</p><p class="hint" id="entryFeedback" role="status"></p></div>
 <div><div class="eyebrow" style="text-align:center">Sample Ticket — Not Valid for Entry</div><div class="ticket"><div class="ticket-top"><strong>WHO DAT GIVES<br><small>SAINTS RAFFLE</small></strong><span>⚜</span></div><div class="ticket-body"><div class="cap">DEMONSTRATION ONLY</div><h3>WHO DAT<br>NATION!</h3><div class="ticket-num">01</div><div class="cap">SAMPLE NUMBER</div><div class="ticket-foot">SAINTS VS. PANTHERS · NOV 15, 2026<div class="qr"><img src="https://quickchart.io/qr?size=180&margin=0&text=https%3A%2F%2Fwho-dat-gives.vercel.app" alt="QR code for Who Dat Gives project website"></div><span>QR opens the site — not a unique ticket verifier</span></div></div></div><p class="tiny" style="text-align:center">After an authorized, verified purchase, each entry would need a server-issued unique number and permanent auditable record.</p></div>
 </div></section></main>
 <section class="wrap" style="padding:38px 0 46px;text-align:center">
@@ -42,30 +42,74 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
   <p class="subcopy" style="margin:0 auto 20px">Supporters do not need to spin anything. When the event is authorized and entries are open, the organizer conducts a single hosted drawing, planned for Thursday, November 12. Keep your numbered ticket and watch for the official result.</p>
   <p class="previewtext">The drawing is not active. This page is an interactive ticket preview only.</p>
 </section>
-<footer class="wrap footer">WHO DAT GIVES · Independent community initiative. Not sponsored by or affiliated with the NFL, New Orleans Saints, or Carolina Panthers. No paid raffle transactions are being accepted. Official terms, eligibility, raffle authorization, payment verification and prize details must be finalized before paid entry sales open.</footer>
+<footer class="wrap footer" id="publicFooter">WHO DAT GIVES · Independent community initiative. Not sponsored by or affiliated with the NFL, New Orleans Saints, or Carolina Panthers. No paid raffle transactions are being accepted. Official terms, eligibility, raffle authorization, payment verification and prize details must be finalized before paid entry sales open.</footer>
 <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="thanks"><div class="modal"><button class="close" type="button" id="close" aria-label="Close">×</button><div class="eyebrow">✦ ✦ ✦ WHO DAT CELEBRATION ✦ ✦ ✦</div><h2 id="thanks">Thank You, Who Dat Nation!</h2><p class="tiny">Sample confirmation only. No payment was taken and no ticket was issued.</p><div class="ticket"><div class="ticket-top"><strong>WHO DAT GIVES</strong><span>⚜</span></div><div class="ticket-body"><div class="cap">SAMPLE · NOT A VALID ENTRY</div><h3>THANK YOU<br>FOR YOUR SUPPORT!</h3><div class="ticket-num" id="sample-number">01</div><div class="cap">DEMONSTRATION NUMBER(S)</div><div class="ticket-foot">NO PAYMENT PROCESSED · NO EMAIL SENT<br>SCREENSHOT FOR DESIGN REVIEW ONLY</div></div></div><button type="button" class="cta full" id="done">Back to Preview</button></div></div>
 <script>
 (function(){
  const q=document.getElementById('quantity'),amount=document.getElementById('amount'),overlay=document.getElementById('overlay');
+ const el=id=>document.getElementById(id);
+ let liveCheckout=false,requestKey=null;
  function update(){
-  const n=Math.min(999,Math.max(1,parseInt(q.value,10)||1));
+  const n=Math.min(liveCheckout?100:999,Math.max(1,parseInt(q.value,10)||1));
   q.value=n;amount.textContent='$'+(n*15).toLocaleString();
   return n;
  }
  update();
  document.getElementById('minus').onclick=()=>{q.value=Math.max(1,update()-1);update()};
- document.getElementById('plus').onclick=()=>{q.value=Math.min(999,update()+1);update()};
+ document.getElementById('plus').onclick=()=>{q.value=Math.min(liveCheckout?100:999,update()+1);update()};
  q.addEventListener('change',update);q.addEventListener('input',()=>{if(q.value)update()});
  function hide(){overlay.classList.remove('show')}
  document.getElementById('close').onclick=hide;document.getElementById('done').onclick=hide;
  overlay.addEventListener('click',e=>{if(e.target===overlay)hide()});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')hide()});
- document.getElementById('demo').onclick=()=>{
-  const n=update(),v=document.getElementById('sample-number');
+ el('demo').onclick=async()=>{
+  const n=update();
+  if(liveCheckout){
+   const name=el('name').value.trim(),phone=el('phone').value.trim(),email=el('email').value.trim();
+   if(name.length<2||phone.replace(/\D/g,'').length<7){el('entryFeedback').textContent='Enter your name and a valid phone number.';return}
+   const button=el('demo');
+   button.disabled=true;el('entryFeedback').textContent='Reserving your unique numbers...';
+   try{
+    if(!requestKey)requestKey=crypto.randomUUID();
+    const response=await fetch('/api/orders',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({name,phone,email,quantity:n,requestKey})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||!data.receiptUrl)throw Error(data.error||'Unable to reserve numbers.');
+    location.href=data.receiptUrl;
+   }catch(e){
+    el('entryFeedback').textContent=e.message;
+    button.disabled=false;
+   }
+   return;
+  }
+  const v=document.getElementById('sample-number');
   v.textContent=n===1?'01':n<=4?Array.from({length:n},(_,i)=>String(i+1).padStart(2,'0')).join(' · '):'01–'+String(n).padStart(2,'0');
   v.style.fontSize=n===1?'76px':'30px';overlay.classList.add('show');
   for(let i=0;i<70;i++){const el=document.createElement('i');el.className='confetti';el.style.left=(Math.random()*100)+'vw';el.style.background=['#edbe55','#fff1ce','#c99842','#fff'][i%4];el.style.animationDelay=Math.random()*.55+'s';document.body.appendChild(el);setTimeout(()=>el.remove(),4400)}
  };
+ async function initializeCheckout(){
+  try{
+   const r=await fetch('/api/health',{cache:'no-store'});
+   if(!r.ok)return;
+   const state=await r.json();
+   if(!state.paidEntriesOpen)return;
+   liveCheckout=true;
+   q.max='100';update();
+   el('siteNotice').textContent='WHO DAT GIVES — TICKET NUMBERS RESERVED AT CHECKOUT';
+   el('heroPreview').textContent='Your unique ticket numbers are reserved automatically after ordering. Follow your private receipt for Zelle payment instructions.';
+   el('entryHeading').textContent='Reserve Your Ticket Numbers';
+   el('entryHint').textContent='ZELLE PAYMENT INSTRUCTIONS PROVIDED AFTER RESERVATION';
+   el('entryAbout').textContent='Enter your information and choose the number of tickets. Your numbers will appear immediately. Then send payment through Zelle using the recipient and memo on your private receipt. Only verified payments become valid entries.';
+   el('nameLabel').textContent='Full name';el('phoneLabel').textContent='Phone number';
+   el('emailLabel').textContent='Email (optional)';el('quantityLabel').textContent='Number of ticket entries (up to 100 per order)';
+   el('demo').textContent='Reserve My Ticket Numbers';
+   el('entryFoot').textContent='No payment is collected by this website. Your receipt gives the Zelle recipient, amount and transaction memo. Save the receipt link. Reserved numbers are not valid until bank payment verification.';
+   el('publicFooter').textContent='WHO DAT GIVES · Independent community initiative. Not affiliated with the NFL or New Orleans Saints. Numbers reserve automatically. Only bank-verified entries qualify for the hosted drawing.';
+  }catch(e){/* Preview remains in place on network error. */}
+ }
+ initializeCheckout();
 })();
 </script>
 </body></html>
