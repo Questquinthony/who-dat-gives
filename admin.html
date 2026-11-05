@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Organizer Dashboard | Who Dat Gives</title><meta name="robots" content="noindex,nofollow">
+<style>
+:root{color-scheme:dark;--gold:#eabb59;--bg:#100d0a;--panel:#251c13;--line:#876331;--text:#f8e6c9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,Arial;padding:22px}
+main{max-width:1050px;margin:auto}h1{color:var(--gold);font-size:clamp(30px,5vw,42px);margin:14px 0 4px}h2{font-size:20px;color:var(--gold)}
+p{line-height:1.5}a{color:var(--gold)}.sub{color:#cbb798}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:18px 0}
+input{background:#120e0a;color:white;border:1px solid #af894c;border-radius:8px;min-height:44px;padding:11px;width:100%;font:inherit}
+label{font-weight:700;display:block;margin-bottom:7px}button{border:0;border-radius:8px;padding:12px 15px;background:var(--gold);color:#241608;font-weight:850;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#access{flex:1;min-width:200px}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.stat{background:#17110b;padding:15px;border:1px solid #60471f;border-radius:10px}.stat strong{display:block;font-size:29px;color:var(--gold)}
+.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:740px}th,td{text-align:left;padding:12px;border-bottom:1px solid #574127;vertical-align:top;font-size:13px}th{color:var(--gold)}
+.mono{font:12px ui-monospace,monospace;overflow-wrap:anywhere}.secondary{background:#42301b;color:var(--text)}.muted{color:#d2b98c}.hide{display:none}.pill{border:1px solid #ae8a40;border-radius:99px;padding:4px 8px;font-size:12px}
+.warning{border-left:4px solid var(--gold);padding-left:13px;color:#ffdfa2}
+@media(max-width:520px){body{padding:14px}.panel{padding:13px}.stats{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><main>
+<a href="/">← Back to public preview</a><h1>Who Dat Gives</h1><p class="sub">Organizer dashboard · protected order and ticket records</p>
+<div class="panel"><p class="warning"><b>Private administrator access.</b> Your access key stays in browser memory during this visit and is not saved to local storage. Never share it.</p>
+<label for="access">Admin access key</label><div class="row"><input type="password" id="access" autocomplete="off" placeholder="Enter secure key"><button id="connect">View records</button><button id="logout" class="secondary">Clear key</button></div>
+<p id="message" role="status" class="muted">Enter your key to access private records.</p></div>
+<section id="data" class="hide">
+<div class="panel"><h2>Operations</h2><p id="saleStatus" class="warning"></p><p id="emailStatus" class="muted"></p>
+<div class="stats" id="stats"></div><div class="row" style="margin-top:16px"><button id="refresh">Refresh records</button></div></div>
+<div class="panel"><h2>Recent orders</h2><p class="muted">Payment confirmation is restricted until authorization is verified and sales are deliberately enabled. Always verify the transaction directly with the bank or payment processor before confirming an order.</p><div class="tablewrap">
+<table><thead><tr><th>Date / Status</th><th>Customer</th><th>Order</th><th>Tickets</th><th>Action</th></tr></thead><tbody id="orders"></tbody></table></div></div>
+<div class="panel"><h2>Audit history</h2><div id="audit" class="mono muted"></div></div></section>
+</main><script>
+(function(){
+let key='',salesEnabled=false,emailConfigured=false;
+const byId=x=>document.getElementById(x);
+function msg(s){byId('message').textContent=s}
+function cell(tr,value,cls){let td=document.createElement('td');td.textContent=value==null?'':String(value);if(cls)td.className=cls;tr.appendChild(td);return td}
+async function request(path,options={}){
+ const result=await fetch(path,{...options,headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},cache:'no-store'});
+ let body;try{body=await result.json()}catch{body={error:'Invalid server response'}}
+ if(!result.ok)throw Error(body.error||('HTTP '+result.status));
+ return body;
+}
+async function load(){
+ if(!key){msg('Enter your admin access key first');return}
+ byId('connect').disabled=true;msg('Loading secure records...');
+ try{
+  const [summary,list]=await Promise.all([request('/api/admin/summary'),request('/api/admin/orders')]);
+  salesEnabled=Boolean(summary.salesEnabled);emailConfigured=Boolean(summary.emailConfigured);
+  byId('saleStatus').textContent=salesEnabled?'Paid entry controls are enabled; verify authorization and transactions before any confirmation.':'SAFE PREVIEW: Paid entries and confirmations are disabled.';
+  byId('emailStatus').textContent=emailConfigured?'Email delivery provider configured.':'Email delivery requires a verified sender and RESEND_API_KEY; no email can be sent yet.';
+  const names=[['orders','Total orders'],['pending_orders','Pending'],['confirmed_orders','Confirmed'],['issued_tickets','Tickets issued']];
+  const root=byId('stats');root.replaceChildren();
+  for(const [k,label] of names){const el=document.createElement('div');el.className='stat';const v=document.createElement('strong');v.textContent=summary.stats[k]||0;el.append(v,document.createTextNode(label));root.append(el)}
+  const tbody=byId('orders');tbody.replaceChildren();
+  if(!list.orders.length){const tr=document.createElement('tr');const td=cell(tr,'No real orders have been recorded.');td.colSpan=5;tbody.append(tr)}
+  for(const o of list.orders){
+   const tr=document.createElement('tr');
+   cell(tr,(new Date(o.created_at)).toLocaleString()+' · '+o.status);
+   cell(tr,o.buyer_name+' | '+o.phone+' | '+(o.email||'No email'));
+   cell(tr,String(o.id)+' | '+o.quantity+' × $15','mono');
+   const td=cell(tr,'');
+   if(o.tickets.length){
+    for(const t of o.tickets){let a=document.createElement('a');a.href='/ticket.html?code='+encodeURIComponent(t.verificationCode);a.target='_blank';a.rel='noopener noreferrer';a.textContent='#'+String(t.number).padStart(2,'0')+' ';td.append(a)}
+   } else {td.textContent='None issued'}
+   const a=cell(tr,'');let note=document.createElement('div');note.className='muted';note.textContent='Email: '+o.email_status;a.append(note);
+   if(salesEnabled&&o.status==='pending_payment'){
+    let btn=document.createElement('button');btn.textContent='Verify & confirm';btn.onclick=async()=>{
+      const reference=prompt('Enter the independently verified bank/payment reference for this order:');
+      if(!reference)return;
+      if(!confirm('Have you personally verified the full payment in the bank or processor account? This issues '+o.quantity+' official ticket(s) and cannot be undone.'))return;
+      try{btn.disabled=true;await request('/api/admin/confirm',{method:'POST',body:JSON.stringify({orderId:o.id,paymentReference:reference})});await load()}
+      catch(e){alert(e.message);btn.disabled=false}
+    };a.append(btn)
+   }
+   if(salesEnabled&&emailConfigured&&o.status==='confirmed'&&o.email&&o.email_status!=='sent'){
+    let btn=document.createElement('button');btn.className='secondary';btn.textContent='Send receipt';btn.onclick=async()=>{
+      if(!confirm('Send a ticket receipt to '+o.email+'?'))return;
+      try{btn.disabled=true;await request('/api/admin/send-email',{method:'POST',body:JSON.stringify({orderId:o.id})});await load()}
+      catch(e){alert(e.message);btn.disabled=false}
+    };a.append(btn)
+   }
+   tbody.append(tr)
+  }
+  const log=byId('audit');log.replaceChildren();
+  if(!summary.recentEvents.length)log.textContent='No audit events yet.';
+  for(const ev of summary.recentEvents){const p=document.createElement('p');p.textContent=new Date(ev.created_at).toLocaleString()+' · '+ev.event_type+' · '+(ev.order_id||'');log.append(p)}
+  byId('data').classList.remove('hide');msg('Secure records loaded.'); 
+ }catch(e){byId('data').classList.add('hide');msg(e.message)}
+ finally{byId('connect').disabled=false}
+}
+byId('connect').onclick=()=>{key=byId('access').value.trim();byId('access').value='';load()};
+byId('refresh').onclick=load;
+byId('logout').onclick=()=>{key='';byId('access').value='';byId('data').classList.add('hide');msg('Access key cleared.')};
+})();
+</script></body></html>

@@ -1,13 +1,15 @@
--- Run only in a controlled PostgreSQL database before enabling paid entries.
+-- Existing schema, retained as source-of-truth for future migrations.
+-- Do not enable ticket sales until local gaming authorization, official rules,
+-- payment-provider eligibility, and prize documentation are independently verified.
 CREATE SEQUENCE IF NOT EXISTS entry_number_seq START WITH 1 INCREMENT BY 1;
 CREATE TABLE IF NOT EXISTS raffle_orders (
   id UUID PRIMARY KEY,
   buyer_name TEXT NOT NULL,
   phone TEXT NOT NULL,
   email TEXT,
-  quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 100),
-  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
-  status TEXT NOT NULL DEFAULT 'pending_payment' CHECK (status IN ('pending_payment','confirmed','void')),
+  quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 100),
+  amount_cents INTEGER NOT NULL CHECK(amount_cents>0),
+  status TEXT NOT NULL DEFAULT 'pending_payment' CHECK(status IN ('pending_payment','confirmed','void')),
   payment_reference TEXT UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   confirmed_at TIMESTAMPTZ
@@ -19,3 +21,19 @@ CREATE TABLE IF NOT EXISTS raffle_tickets (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS tickets_order_id_idx ON raffle_tickets(order_id);
+CREATE TABLE IF NOT EXISTS raffle_audit_events (
+  id BIGSERIAL PRIMARY KEY,
+  order_id UUID REFERENCES raffle_orders(id),
+  event_type TEXT NOT NULL,
+  detail JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS raffle_audit_order_idx ON raffle_audit_events(order_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS raffle_email_deliveries (
+  order_id UUID PRIMARY KEY REFERENCES raffle_orders(id),
+  status TEXT NOT NULL DEFAULT 'not_sent' CHECK(status IN ('not_sent','sent','failed')),
+  provider_email_id TEXT,
+  last_attempt_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  error_code TEXT
+);
