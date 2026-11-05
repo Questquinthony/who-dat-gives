@@ -27,7 +27,7 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
 .winner.show{display:block}.winner small{font-weight:900;letter-spacing:2px}.winner strong{display:block;font-size:clamp(28px,5vw,52px);overflow-wrap:anywhere;margin-top:8px}
 .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.row button{flex:1}
 .footer{margin-top:35px;border-top:1px solid #664e2b;padding-top:18px;color:#a99475;font-size:12px;line-height:1.55}
-#real{display:none}.full{width:100%}.divider{height:1px;background:#7a592d;margin:24px 0}
+#real{display:none}[hidden]{display:none!important}.full{width:100%}.divider{height:1px;background:#7a592d;margin:24px 0}
 .confetti{position:fixed;top:-20px;width:10px;height:16px;pointer-events:none;z-index:10;animation:fall 3.5s linear forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(900deg);opacity:0}}
 @media(max-width:800px){.layout{grid-template-columns:1fr}.panel{padding:18px}.wheel-wrap{padding:18px}}
@@ -36,8 +36,19 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
 <a href="/">← Back to Who Dat Gives</a>
 <p class="eyebrow">⚜ Who Dat Nation · New Orleans</p>
 <h1>THE <span>WHO DAT</span><br>CELEBRATION!</h1>
-<p class="intro">Turn the giveaway into a moment everyone remembers. Rehearse the drawing, bring the excitement, and celebrate the winning ticket together.</p>
+<p class="intro">Private host controls for rehearsing and conducting the ticket drawing. Supporters never need to spin the wheel; the organizer runs it when the event is ready.</p>
+<section class="panel" id="hostGate">
+ <p class="eyebrow">Organizer Access Required</p>
+ <h2>Host Sign-In</h2>
+ <p class="hint">Only the organizer can load ticket records, rehearse spins, or run the official drawing. Enter the same private key as your organizer dashboard.</p>
+ <label for="hostAccess">Organizer access key</label>
+ <input type="password" id="hostAccess" autocomplete="off" placeholder="Enter organizer key">
+ <div class="row"><button id="hostUnlock" type="button" class="gold">Unlock Host Controls</button><a href="/admin.html" style="color:var(--gold)">Organizer Dashboard</a></div>
+ <p id="hostStatus" class="status" role="status">The drawing wheel is locked.</p>
+</section>
+<div id="hostWorkspace" hidden>
 <div class="tabs">
+ <button id="hostLogout" type="button">🔒 Lock Host Controls</button>
  <button id="demoTab" aria-pressed="true">🎉 Rehearsal Wheel</button>
  <button id="officialTab" aria-pressed="false">🔒 Organizer Drawing</button>
  <button id="soundToggle" type="button" aria-pressed="true" aria-label="Turn celebration sounds off">🔊 Sound On</button>
@@ -72,8 +83,8 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
    <div style="border-top:1px solid #73532c;margin-top:22px;padding-top:15px">
     <p class="eyebrow">Connected Test Run</p><h2>Load Practice Tickets</h2>
     <p class="hint">Use the sample tickets you've created in the protected practice environment. The wheel will include every approved practice ticket, never real entries.</p>
-    <label for="sandboxAccess">Organizer key</label><input id="sandboxAccess" type="password" autocomplete="off" placeholder="Paste your organizer key">
-    <div class="row"><button id="loadSandbox" type="button">Load Sandbox Tickets</button><a href="/sandbox.html" style="color:var(--gold)">Create Test Tickets</a></div>
+    <p class="hint">Your verified host sign-in is used to retrieve the approved practice pool.</p>
+    <div class="row"><button id="loadSandbox" type="button">Load Practice Tickets</button><a href="/sandbox.html" style="color:var(--gold)">Create Test Tickets</a></div>
    </div>
    <p id="demoStatus" class="status">Rehearsal mode: this does not issue tickets or select an official winner.</p>
    <p class="hint">Names are for demonstration only. A real drawing, if enabled later, uses confirmed unique ticket records stored on the server—not this list.</p>
@@ -81,8 +92,7 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
   <section id="real" class="panel">
    <p class="eyebrow">Organizer access only</p><h2>Official Ticket Drawing</h2>
    <p class="hint">A real drawing is locked until confirmed tickets exist and the organizer separately enables an approved event. The server records one winner and prevents a second drawing.</p>
-   <label for="key">Private organizer key</label><input id="key" type="password" autocomplete="off" placeholder="Paste admin access key">
-   <div class="row"><button id="unlock">Load Verified Entries</button><button id="forget">Clear Key</button></div>
+   <div class="row"><button id="unlock">Load Confirmed Ticket Pool</button></div>
    <p id="realStatus" class="status">Enter your key to view the official drawing status.</p>
    <button id="realSpin" class="gold full" disabled>Run Official Drawing</button>
    <p class="hint">Never show your administrator key during a livestream. The wheel animation illustrates a server-generated result; it does not determine who wins.</p>
@@ -93,12 +103,13 @@ textarea{min-height:150px;resize:vertical}input{min-height:48px}.hint{font-size:
   </div>
  </div>
 </div>
+</div>
 <p class="footer">Who Dat Gives · Independent community initiative, not affiliated with the NFL or New Orleans Saints. A rehearsal result is not an issued ticket or an official winner. Paid entries are not currently being accepted.</p>
 <script>
 (function(){
 const $=id=>document.getElementById(id);
 const canvas=$('wheel'),ctx=canvas.getContext('2d'),spin=$('spin'),officialSpin=$('realSpin');
-let labels=[],currentRotation=0,animating=false,mode='demo',adminKey='',officialPool=[],sandboxTickets=[],autoPreviewCount=0,sandboxAwaiting=false;
+let labels=[],currentRotation=0,animating=false,mode='demo',adminKey='',officialPool=[],sandboxTickets=[],autoPreviewCount=0,sandboxAwaiting=false,hostKey='',hostAuthorized=false;
 let soundOn=true,audioContext=null,tickFrame=0;
 const palette=['#c89c47','#513314','#e4bf7f','#8c6025','#271b12','#ad822e','#f2d38b','#665027'];
 function secureIndex(n){
@@ -279,10 +290,10 @@ function turnTo(index,title,note,kind){
   animating=false;
  },ms);
 }
-$('update').onclick=()=>{if(!animating)updateDemo()};
+$('update').onclick=()=>{if(hostAuthorized&&!animating)updateDemo()};
 $('loadSandbox').onclick=async()=>{
- const access=$('sandboxAccess').value.trim();$('sandboxAccess').value='';
- if(!access){$('demoStatus').textContent='Enter your organizer key to load sample tickets.';return}
+ if(!hostAuthorized||!hostKey){$('demoStatus').textContent='Organizer sign-in is required.';return}
+ const access=hostKey;
  try{
   const response=await fetch('/api/admin/sandbox?pool=1',{headers:{Authorization:'Bearer '+access},cache:'no-store'});
   const data=await response.json().catch(()=>({}));
@@ -301,7 +312,7 @@ $('entries').addEventListener('input',()=>{
  }
 });
 spin.onclick=()=>{
- if(animating)return;
+ if(!hostAuthorized||animating)return;
  unlockAudio();
  if(sandboxTickets.length){
   const selected=secureIndex(sandboxTickets.length),n=sandboxTickets[selected];
@@ -322,7 +333,7 @@ spin.onclick=()=>{
  turnTo(i,labels[i],'Sample result only. No ticket or prize has been awarded.','REHEARSAL CELEBRATION');
 };
 function setMode(next){
- if(animating)return;
+ if(!hostAuthorized||animating)return;
  mode=next;$('demo').style.display=next==='demo'?'block':'none';$('real').style.display=next==='official'?'block':'none';
  $('demoTab').setAttribute('aria-pressed',String(next==='demo'));$('officialTab').setAttribute('aria-pressed',String(next==='official'));
  $('winner').classList.remove('show');
@@ -333,7 +344,7 @@ function setMode(next){
  }else{
   ctx.clearRect(0,0,720,720);
   labels=[];officialSpin.disabled=true;
-  $('realStatus').textContent='Enter your organizer key and load confirmed entries before the wheel displays any ticket numbers.';
+  $('realStatus').textContent='Load confirmed entries using your host session before the wheel displays any ticket numbers.';
  }
 }
 $('demoTab').onclick=()=>setMode('demo');$('officialTab').onclick=()=>setMode('official');
@@ -348,8 +359,8 @@ function poolDisplay(numbers){
  else{displayLabels(numbers.slice(0,23).map(n=>'#'+String(n).padStart(2,'0')).concat(['+'+(numbers.length-23)+' more']))}
 }
 $('unlock').onclick=async()=>{
- adminKey=$('key').value.trim();$('key').value='';officialSpin.disabled=true;
- if(!adminKey){$('realStatus').textContent='Enter the organizer key.';return}
+ if(!hostAuthorized||!hostKey)return;
+ adminKey=hostKey;officialSpin.disabled=true;
  try{
   const o=await secureFetch('/api/admin/draw-pool');officialPool=o.numbers||[];
   if(o.drawn){$('realStatus').textContent='An official result has already been recorded: ticket #'+o.winnerNumber+'. No redraw is available.';return}
@@ -359,9 +370,13 @@ $('unlock').onclick=async()=>{
   officialSpin.disabled=false;
  }catch(e){$('realStatus').textContent=e.message;adminKey=''}
 };
-$('forget').onclick=()=>{adminKey='';officialPool=[];$('key').value='';officialSpin.disabled=true;$('realStatus').textContent='Administrator key cleared.'};
+$('hostLogout').onclick=()=>{
+ hostKey='';adminKey='';hostAuthorized=false;
+ if('speechSynthesis' in window)try{speechSynthesis.cancel()}catch(e){}
+ location.reload();
+};
 officialSpin.onclick=async()=>{
- if(animating||!adminKey||!officialPool.length)return;
+ if(!hostAuthorized||animating||!adminKey||!officialPool.length)return;
  unlockAudio();
  if(!confirm('Run the ONE official random drawing now? A permanent auditable winner will be selected, and another draw will be blocked.'))return;
  officialSpin.disabled=true;
@@ -386,7 +401,7 @@ function loadDemoFromNavigation(){
  }
  let count=Number(params.get('demoCount'));
  if(!Number.isInteger(count)||count<1||count>999){
-  try{count=Number(sessionStorage.getItem('whoDatDemoCount'))}catch(e){count=NaN}
+  count=NaN;
  }
  if(Number.isInteger(count)&&count>=1&&count<=999){
   autoPreviewCount=count;
@@ -397,6 +412,27 @@ function loadDemoFromNavigation(){
   $('demoStatus').textContent=count+' sample ticket'+(count===1?'':'s')+' loaded from the first page. The preview spins among all '+count+' numbers, without payments or real entries.';
  }else updateDemo();
 }
-loadDemoFromNavigation();
+$('hostUnlock').onclick=async()=>{
+ const candidate=$('hostAccess').value.trim();
+ $('hostAccess').value='';
+ if(!candidate){$('hostStatus').textContent='Enter your private organizer key.';return}
+ $('hostUnlock').disabled=true;
+ $('hostStatus').textContent='Verifying organizer access...';
+ try{
+  const result=await fetch('/api/admin/summary',{
+   headers:{Authorization:'Bearer '+candidate},cache:'no-store'
+  });
+  if(!result.ok)throw Error(result.status===401?'Incorrect organizer key.':'Organizer sign-in unavailable.');
+  hostKey=candidate;adminKey=candidate;hostAuthorized=true;
+  $('hostGate').hidden=true;$('hostWorkspace').hidden=false;
+  loadDemoFromNavigation();
+  $('hostStatus').textContent='Host controls unlocked.';
+ }catch(e){
+  hostKey='';adminKey='';hostAuthorized=false;
+  $('hostGate').hidden=false;$('hostWorkspace').hidden=true;
+  $('hostStatus').textContent=e.message;
+ }finally{$('hostUnlock').disabled=false}
+};
+$('hostAccess').addEventListener('keydown',e=>{if(e.key==='Enter')$('hostUnlock').click()});
 })();
 </script></body></html>
