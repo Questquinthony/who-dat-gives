@@ -330,7 +330,11 @@ function setMode(next){
   if(sandboxAwaiting){ctx.clearRect(0,0,720,720);spin.disabled=true}
   else if(autoPreviewCount)displayLabels(Array.from({length:autoPreviewCount},(_,i)=>String(i+1).padStart(2,'0')));
   else updateDemo();
- }else displayLabels(Array.from({length:12},(_,i)=>'TICKET '+String(i+1).padStart(2,'0')));
+ }else{
+  ctx.clearRect(0,0,720,720);
+  labels=[];officialSpin.disabled=true;
+  $('realStatus').textContent='Enter your organizer key and load confirmed entries before the wheel displays any ticket numbers.';
+ }
 }
 $('demoTab').onclick=()=>setMode('demo');$('officialTab').onclick=()=>setMode('official');
 async function secureFetch(path,opts={}){
