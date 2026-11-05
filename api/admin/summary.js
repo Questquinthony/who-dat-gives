@@ -1,11 +1,22 @@
 const {db,entriesEnabled}=require('../../lib/db');
 const authorized=require('../../lib/admin-auth');
-const {configured:organizerEmailReady,recipients}=require('../../lib/order-mail');
+const {configured:organizerEmailReady,recipients,sendTestNotification}=require('../../lib/order-mail');
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
-  if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'Method not allowed'});}
+  if(req.method!=='GET'&&req.method!=='POST'){res.setHeader('Allow','GET, POST');return res.status(405).json({error:'Method not allowed'});}
   if(!authorized(req))return res.status(401).json({error:'Unauthorized'});
   if(!process.env.DATABASE_URL)return res.status(503).json({error:'Database not configured'});
+  if(req.method==='POST'){
+   if(req.body?.action!=='test_email')return res.status(400).json({error:'Unrecognized organizer action'});
+   if(!organizerEmailReady())return res.status(503).json({error:'Gmail sender authorization is not configured'});
+   try{
+    const result=await sendTestNotification();
+    return res.status(result.sent===result.intended?200:502).json({
+     sent:result.sent,intended:result.intended,
+     message:result.sent===result.intended?'Test notification sent to both organizer inboxes.':'Some test messages could not be sent. Check Gmail credentials and mail logs.'
+    });
+   }catch(e){console.error('Email test error',e.code||'unknown');return res.status(502).json({error:'Unable to send test notification'})}
+  }
   try{
     const [stats,events]=await Promise.all([
       db().query(`
