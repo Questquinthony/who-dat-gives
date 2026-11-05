@@ -7,11 +7,11 @@
  const code=new URLSearchParams(location.search).get('code')||'',status=document.getElementById('status');
  if(!/^[a-f0-9]{48}$/.test(code)){status.textContent='Invalid practice link.';return}
  try{
-  const r=await fetch('/api/sandbox/verify?code='+encodeURIComponent(code),{cache:'no-store'}),v=await r.json();
+  const r=await fetch('/api/tickets/verify?demo=1&code='+encodeURIComponent(code),{cache:'no-store'}),v=await r.json();
   if(!r.ok||!v.valid||!v.sandbox){status.textContent='Practice ticket not found.';return}
   status.textContent='✓ Verified sample record (DEMO ONLY)';
   document.getElementById('number').textContent=String(v.number).padStart(2,'0');
-  document.getElementById('qr').src='/api/sandbox/qr?code='+encodeURIComponent(code);
+  document.getElementById('qr').src='/api/tickets/qr?demo=1&code='+encodeURIComponent(code);
   document.getElementById('ticket').classList.remove('hide');
  }catch(e){status.textContent='Practice verification temporarily unavailable.'}
 })();
