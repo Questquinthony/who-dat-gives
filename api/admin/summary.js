@@ -17,7 +17,7 @@ module.exports=async function handler(req,res){
         SELECT id,event_type,order_id,created_at FROM raffle_audit_events
         ORDER BY created_at DESC LIMIT 20`)
     ]);
-    const tickets=await db().query('SELECT COUNT(*)::int AS issued_tickets FROM raffle_tickets');
+    const tickets=await db().query("SELECT COUNT(*) FILTER(WHERE o.status='confirmed')::int AS issued_tickets, COUNT(*) FILTER(WHERE o.status='pending_payment')::int AS reserved_tickets FROM raffle_tickets t JOIN raffle_orders o ON o.id=t.order_id");
     return res.status(200).json({
       stats:{...stats.rows[0],...tickets.rows[0]},
       recentEvents:events.rows,

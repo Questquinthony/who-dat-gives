@@ -15,9 +15,9 @@ a{color:#eabd5e}.hide{display:none}@media print{body{background:#fff}.ticket{mar
 <article id="ticket" class="ticket hide">
 <div class="top">WHO DAT GIVES <span>⚜</span></div>
 <div class="body"><div class="eyebrow" style="color:#4a3818">SAINTS RAFFLE EVENT</div>
-<h1>THANK YOU FOR YOUR SUPPORT!</h1><div id="number" class="number"></div><b>VERIFIED TICKET NUMBER</b>
-<div><img id="qr" alt="Unique ticket verification QR code"></div>
-<div style="font-size:13px">Scan this QR code to confirm this ticket.</div>
+<h1>THANK YOU FOR YOUR SUPPORT!</h1><div id="number" class="number"></div><b id="ticketLabel">VERIFIED TICKET NUMBER</b>
+<div id="qrWrap"><img id="qr" alt="Unique ticket verification QR code"></div>
+<div id="qrHelp" style="font-size:13px">Scan this QR code to confirm this ticket.</div>
 <div class="footer">SAINTS VS. PANTHERS · NOVEMBER 15, 2026 · CAESARS SUPERDOME</div></div></article>
 <p class="nonprint">Save this page or take a screenshot of your verified ticket.</p>
 <p class="nonprint" style="font-size:12px;color:#cbb895">Independent community initiative. Not affiliated with the NFL or New Orleans Saints.</p>
@@ -29,10 +29,17 @@ if(!/^[a-f0-9]{48}$/.test(code)){s.textContent='Invalid verification link.';retu
 try{
 const r=await fetch('/api/tickets/verify?code='+encodeURIComponent(code),{cache:'no-store'});
 const info=await r.json();
-if(!r.ok||!info.valid){s.textContent='This ticket could not be verified. Contact the event organizer.';return}
-s.textContent='✓ Verified ticket — issued by Who Dat Gives';
+if(!r.ok||!info.number){s.textContent='Ticket not found. Contact the event organizer.';return}
 document.getElementById('number').textContent=String(info.number).padStart(2,'0');
-document.getElementById('qr').src='/api/tickets/qr?code='+encodeURIComponent(code);
+if(info.valid){
+ s.textContent='✓ PAYMENT VERIFIED — eligible ticket';
+ document.getElementById('qr').src='/api/tickets/qr?code='+encodeURIComponent(code);
+}else if(info.pending){
+ s.textContent='RESERVED ONLY · PAYMENT NOT YET VERIFIED';
+ document.getElementById('ticketLabel').textContent='RESERVED NUMBER — NOT YET ELIGIBLE';
+ document.getElementById('qrWrap').hidden=true;
+ document.getElementById('qrHelp').textContent='This number is held for you. This is not a valid entry until payment is verified. Refresh this page to check status.';
+}else{s.textContent='This number is not eligible.';return}
 panel.classList.remove('hide');
 }catch(e){s.textContent='Verification service temporarily unavailable.'}
 })();

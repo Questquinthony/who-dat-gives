@@ -12,8 +12,10 @@ CREATE TABLE IF NOT EXISTS raffle_orders (
   status TEXT NOT NULL DEFAULT 'pending_payment' CHECK(status IN ('pending_payment','confirmed','void')),
   payment_reference TEXT UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  confirmed_at TIMESTAMPTZ
+  confirmed_at TIMESTAMPTZ,
+  receipt_token TEXT UNIQUE
 );
+CREATE UNIQUE INDEX IF NOT EXISTS raffle_orders_receipt_token_idx ON raffle_orders(receipt_token) WHERE receipt_token IS NOT NULL;
 CREATE TABLE IF NOT EXISTS raffle_tickets (
   number BIGINT PRIMARY KEY DEFAULT nextval('entry_number_seq'),
   order_id UUID NOT NULL REFERENCES raffle_orders(id),
