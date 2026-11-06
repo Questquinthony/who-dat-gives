@@ -14,6 +14,13 @@ button:disabled{opacity:.45;cursor:not-allowed}.row{display:flex;gap:10px;align-
 .tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:740px}th,td{text-align:left;padding:12px;border-bottom:1px solid #574127;vertical-align:top;font-size:13px}th{color:var(--gold)}
 .mono{font:12px ui-monospace,monospace;overflow-wrap:anywhere}.secondary{background:#42301b;color:var(--text)}.muted{color:#d2b98c}.hide{display:none}.pill{border:1px solid #ae8a40;border-radius:99px;padding:4px 8px;font-size:12px}
 .warning{border-left:4px solid var(--gold);padding-left:13px;color:#ffdfa2}
+.reconcile{border:1px solid #83612e;background:#171108;padding:18px;border-radius:12px;margin:18px 0}
+.reconcile p{line-height:1.55}.reconcile .details{font-size:15px;font-weight:700;color:var(--gold)}
+.reconcile .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.reconcile .controls .wide{grid-column:1/-1}.reconcile .checkbox{display:flex;align-items:flex-start;gap:10px;font-weight:500}
+.reconcile .checkbox input{width:22px;min-height:22px;height:22px;accent-color:#eabb59;margin:1px 0}
+.reconcile input[readonly]{color:#cbb798}.payment-row{margin-bottom:10px}.search{max-width:360px}
+@media(max-width:580px){.reconcile .controls{grid-template-columns:1fr}.reconcile{padding:13px}}
 @media(max-width:520px){body{padding:14px}.panel{padding:13px}.stats{grid-template-columns:repeat(2,1fr)}}
 </style></head><body><main>
 <a href="/">← Back to public preview</a><h1>Who Dat Gives</h1><p class="sub">Organizer dashboard · protected order and ticket records</p>
@@ -23,17 +30,116 @@ button:disabled{opacity:.45;cursor:not-allowed}.row{display:flex;gap:10px;align-
 <section id="data" class="hide">
 <div class="panel"><h2>Operations</h2><p id="saleStatus" class="warning"></p><p id="emailStatus" class="muted"></p>
 <div class="stats" id="stats"></div><div class="row" style="margin-top:16px"><button id="refresh">Refresh records</button><button id="emailTest" class="secondary hide">Send Test Email</button></div></div>
+<div class="panel"><h2>Launch Readiness</h2><p class="muted">Live entry sales and the official drawing stay locked until required approval. Email delivery and database configuration can be checked without accepting any money.</p><div id="launchChecks" class="stats"></div></div>
 <div class="panel"><h2>Private Host Drawing Controls</h2><p class="muted">Only the organizer conducts the wheel drawing. Use the separate host page to rehearse or load confirmed tickets. Supporters won't see drawing controls on the public site.</p><a href="/celebration.html" style="font-weight:900">Open Host Drawing Console →</a></div>
 <div class="panel"><h2>Complete Ticket Flow — Practice Environment</h2><p class="muted">Simulate immediate numbered-ticket reservation, then approve payment in the practice system. The numbers stay the same before and after approval. Approved practice tickets load into the host wheel. Test records stay separate from real customer data.</p><a href="/sandbox.html" style="font-weight:900">Open Practice Orders &amp; Ticket Testing →</a></div>
-<div class="panel"><h2>Recent orders</h2><p class="muted">Payment confirmation is restricted until authorization is verified and sales are deliberately enabled. Always verify the transaction directly with the bank or payment processor before confirming an order.</p><div class="tablewrap">
+<div class="panel"><h2>Recent Orders &amp; Zelle Matching</h2>
+<p class="muted">Match the transfer's exact amount and WDG memo against the recipient bank's transaction before confirming. Reserved numbers remain ineligible until payment is verified. Only the most recent 100 orders are shown here.</p>
+<div class="row payment-row"><input id="searchOrders" class="search" type="search" placeholder="Find by customer, ticket, or WDG memo" aria-label="Search recent orders">
+<select id="statusFilter" aria-label="Filter order status" style="min-height:44px;padding:10px;background:#120e0a;color:#fff;border:1px solid #af894c;border-radius:8px"><option value="all">All statuses</option><option value="pending_payment">Pending payment</option><option value="confirmed">Verified payment</option></select>
+</div>
+<p id="filterCount" class="muted" role="status"></p>
+<div class="tablewrap">
 <table><thead><tr><th>Date / Status</th><th>Customer</th><th>Order</th><th>Tickets</th><th>Action</th></tr></thead><tbody id="orders"></tbody></table></div></div>
+<section id="reconcile" class="reconcile hide" aria-label="Verify Zelle Payment">
+<h2>Verify Zelle Deposit</h2><p>Confirm this order only after independently viewing the incoming deposit in the recipient's bank. A customer's screenshot or claim is not proof of payment.</p>
+<p class="details" id="matchOrder"></p>
+<div class="controls">
+<label>Expected Amount<input id="expectedAmount" readonly></label>
+<label>Expected Zelle Memo<input id="expectedMemo" readonly></label>
+<label>Amount Actually Received (USD)<input id="bankAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="e.g. 45.00"></label>
+<label>Zelle Memo Shown by Bank<input id="bankMemo" type="text" maxlength="80" autocomplete="off" placeholder="Type exact WDG memo from bank"></label>
+<label class="wide">Bank Transaction Reference<input id="bankRef" type="text" maxlength="150" autocomplete="off" placeholder="Bank-provided unique transfer reference"></label>
+<label class="checkbox wide"><input id="matchedRecipient" type="checkbox"> <span>I verified the deposit was received in the intended recipient bank account.</span></label>
+<label class="checkbox wide"><input id="observedDeposit" type="checkbox"> <span>I independently verified the bank record, full amount, memo, and transaction reference. No payment is being inferred from the customer's submission.</span></label>
+</div>
+<p id="matchFeedback" class="warning" role="status">Exact amount and memo match required. If anything differs, keep the order pending.</p>
+<div class="row"><button id="confirmDeposit" type="button">Confirm Verified Payment</button><button id="cancelDeposit" class="secondary" type="button">Cancel</button></div>
+</section>
 <div class="panel"><h2>Audit history</h2><div id="audit" class="mono muted"></div></div></section>
 </main><script>
 (function(){
-let key='',salesEnabled=false,emailConfigured=false;
+let key='',salesEnabled=false,emailConfigured=false,visibleOrders=[],selectedOrder=null;
 const byId=x=>document.getElementById(x);
 function msg(s){byId('message').textContent=s}
 function cell(tr,value,cls){let td=document.createElement('td');td.textContent=value==null?'':String(value);if(cls)td.className=cls;tr.appendChild(td);return td}
+function dollars(cents){return '$'+(Number(cents)/100).toFixed(2)}
+function openReconcile(o){
+ if(!salesEnabled||o.status!=='pending_payment')return;
+ selectedOrder=o;
+ byId('reconcile').classList.remove('hide');
+ byId('matchOrder').textContent=o.buyer_name+' · '+o.quantity+' tickets · '+o.tickets.map(t=>'#'+String(t.number).padStart(2,'0')).join(', ');
+ byId('expectedAmount').value=dollars(o.amount_cents);
+ byId('expectedMemo').value=o.zelle_memo||'';
+ for(const id of ['bankAmount','bankMemo','bankRef'])byId(id).value='';
+ for(const id of ['matchedRecipient','observedDeposit'])byId(id).checked=false;
+ byId('matchFeedback').textContent='Enter the details directly from the recipient bank. Both the amount and memo must match.';
+ byId('confirmDeposit').disabled=false;
+ byId('reconcile').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderOrders(){
+ const query=byId('searchOrders').value.trim().toLowerCase(),status=byId('statusFilter').value;
+ const tbody=byId('orders');tbody.replaceChildren();
+ const filtered=visibleOrders.filter(o=>{
+  if(status!=='all'&&o.status!==status)return false;
+  if(!query)return true;
+  const hay=[o.buyer_name,o.phone,o.email,o.zelle_memo,o.id,
+   ...o.tickets.map(t=>String(t.number))].join(' ').toLowerCase();
+  return hay.includes(query);
+ });
+ byId('filterCount').textContent=filtered.length+' matching order'+(filtered.length===1?'':'s')+' in recent records';
+ if(!filtered.length){const tr=document.createElement('tr');const td=cell(tr,'No matching orders.');td.colSpan=5;tbody.append(tr)}
+ for(const o of filtered){
+   const tr=document.createElement('tr');
+   cell(tr,(new Date(o.created_at)).toLocaleString()+' · '+o.status);
+   cell(tr,o.buyer_name+' | '+o.phone+' | '+(o.email||'No email'));
+   cell(tr,o.quantity+' × $15 = '+dollars(o.amount_cents)+' | Zelle memo: '+(o.zelle_memo||'Not assigned'),'mono');
+   const td=cell(tr,'');
+   if(o.tickets.length){
+    for(const t of o.tickets){const a=document.createElement('a');a.href='/ticket.html?code='+encodeURIComponent(t.verificationCode);a.target='_blank';a.rel='noopener noreferrer';a.textContent=(o.status==='confirmed'?'Verified #':'Reserved #')+String(t.number).padStart(2,'0')+' ';td.append(a)}
+   }else td.textContent='None reserved';
+   const action=cell(tr,'');
+   const note=document.createElement('div');note.className='muted';
+   note.textContent='Customer email: reserved '+o.customer_reservation_email+'; verified '+o.customer_confirmation_email;
+   action.append(note);
+   if(salesEnabled&&o.status==='pending_payment'){
+    const btn=document.createElement('button');btn.textContent='Match Zelle Deposit';btn.style.marginTop='8px';
+    btn.onclick=()=>openReconcile(o);
+    action.append(btn);
+   }
+   const customerStage=o.status==='confirmed'?'verified':'reserved';
+   const customerMailStatus=customerStage==='verified'?o.customer_confirmation_email:o.customer_reservation_email;
+   if(salesEnabled&&emailConfigured&&o.email&&['pending_payment','confirmed'].includes(o.status)&&['failed','not_sent'].includes(customerMailStatus)){
+     const btn=document.createElement('button');btn.className='secondary';btn.style.marginTop='8px';
+     btn.textContent='Retry Customer Email';
+     btn.onclick=async()=>{
+       if(!confirm('Send the '+customerStage+' email to '+o.email+'? This will not alter ticket numbers or payment status.'))return;
+       btn.disabled=true;
+       try{await request('/api/admin/send-email',{method:'POST',body:JSON.stringify({orderId:o.id})});await load()}
+       catch(e){alert(e.message);btn.disabled=false}
+     };
+     action.append(btn);
+   }
+   tbody.append(tr);
+ }
+}
+function showLaunchChecks(checks){
+ const rows=[
+  ['Database',checks.databaseConfigured],
+  ['Organizer Gmail',checks.emailSenderConfigured],
+  ['Zelle recipient configured',checks.zelleRecipientConfigured],
+  ['Raffle authorization verified',checks.regulatorAuthorizationConfirmed],
+  ['Paid entries enabled',checks.salesSwitchEnabled],
+  ['Official drawing enabled',checks.drawSwitchEnabled]
+ ];
+ const root=byId('launchChecks');root.replaceChildren();
+ for(const [name,ok] of rows){
+  const el=document.createElement('div');el.className='stat';
+  const marker=document.createElement('strong');marker.textContent=ok?'✓':'—';
+  el.append(marker,document.createTextNode(name+' · '+(ok?'Configured':'Not enabled')));
+  root.append(el);
+ }
+}
 async function request(path,options={}){
  const result=await fetch(path,{...options,headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},cache:'no-store'});
  let body;try{body=await result.json()}catch{body={error:'Invalid server response'}}
@@ -53,49 +159,9 @@ async function load(){
   const names=[['orders','Total orders'],['pending_orders','Pending payments'],['reserved_tickets','Numbers reserved'],['issued_tickets','Verified tickets']];
   const root=byId('stats');root.replaceChildren();
   for(const [k,label] of names){const el=document.createElement('div');el.className='stat';const v=document.createElement('strong');v.textContent=summary.stats[k]||0;el.append(v,document.createTextNode(label));root.append(el)}
-  const tbody=byId('orders');tbody.replaceChildren();
-  if(!list.orders.length){const tr=document.createElement('tr');const td=cell(tr,'No real orders have been recorded.');td.colSpan=5;tbody.append(tr)}
-  for(const o of list.orders){
-   const tr=document.createElement('tr');
-   cell(tr,(new Date(o.created_at)).toLocaleString()+' · '+o.status);
-   cell(tr,o.buyer_name+' | '+o.phone+' | '+(o.email||'No email'));
-   cell(tr,o.quantity+' × $15 = $'+(o.amount_cents/100).toFixed(2)+' | Zelle memo: '+(o.zelle_memo||'Not assigned'),'mono');
-   const td=cell(tr,'');
-   if(o.tickets.length){
-    for(const t of o.tickets){let a=document.createElement('a');a.href='/ticket.html?code='+encodeURIComponent(t.verificationCode);a.target='_blank';a.rel='noopener noreferrer';a.textContent=(o.status==='confirmed'?'Verified #':'Reserved #')+String(t.number).padStart(2,'0')+' ';td.append(a)}
-   } else {td.textContent='None issued'}
-   const a=cell(tr,'');
-   let note=document.createElement('div');note.className='muted';
-   note.textContent='Customer email: reserved '+o.customer_reservation_email+'; verified '+o.customer_confirmation_email;
-   a.append(note);
-   if(salesEnabled&&o.status==='pending_payment'){
-    let btn=document.createElement('button');btn.textContent='Verify & confirm';btn.onclick=async()=>{
-      const reference=prompt('Enter the independently verified bank/payment reference for this order:');
-      if(!reference)return;
-      if(!confirm('Have you personally verified the full payment in the bank or processor account? This issues '+o.quantity+' official ticket(s) and cannot be undone.'))return;
-      try{btn.disabled=true;await request('/api/admin/confirm',{method:'POST',body:JSON.stringify({orderId:o.id,paymentReference:reference})});await load()}
-      catch(e){alert(e.message);btn.disabled=false}
-    };a.append(btn)
-   }
-   const customerStage=o.status==='confirmed'?'verified':'reserved';
-   const customerMailStatus=customerStage==='verified'?o.customer_confirmation_email:o.customer_reservation_email;
-   if(salesEnabled&&emailConfigured&&o.email&&['pending_payment','confirmed'].includes(o.status)&&
-      ['failed','not_sent'].includes(customerMailStatus)){
-     const btn=document.createElement('button');
-     btn.className='secondary';btn.style.marginTop='8px';
-     btn.textContent='Retry Customer Email';
-     btn.onclick=async()=>{
-       if(!confirm('Send the '+customerStage+' email to '+o.email+'? This will not alter ticket numbers or payment status.'))return;
-       btn.disabled=true;
-       try{
-         await request('/api/admin/send-email',{method:'POST',body:JSON.stringify({orderId:o.id})});
-         await load();
-       }catch(e){alert(e.message);btn.disabled=false}
-     };
-     a.append(btn);
-   }
-   tbody.append(tr)
-  }
+  visibleOrders=list.orders;
+  showLaunchChecks(summary.launchChecks||{});
+  renderOrders();
   const log=byId('audit');log.replaceChildren();
   if(!summary.recentEvents.length)log.textContent='No audit events yet.';
   for(const ev of summary.recentEvents){const p=document.createElement('p');p.textContent=new Date(ev.created_at).toLocaleString()+' · '+ev.event_type+' · '+(ev.order_id||'');log.append(p)}
@@ -105,6 +171,38 @@ async function load(){
 }
 byId('connect').onclick=()=>{key=byId('access').value.trim();byId('access').value='';load()};
 byId('refresh').onclick=load;
+byId('searchOrders').addEventListener('input',renderOrders);
+byId('statusFilter').addEventListener('change',renderOrders);
+byId('cancelDeposit').onclick=()=>{
+  selectedOrder=null;byId('reconcile').classList.add('hide');
+};
+byId('confirmDeposit').onclick=async()=>{
+ const o=selectedOrder;
+ if(!o||!salesEnabled)return;
+ const ref=byId('bankRef').value.trim();
+ const entered=byId('bankAmount').value.trim();
+ const dollarsEntered=Number(entered);
+ const memo=byId('bankMemo').value.trim().toUpperCase();
+ if(!entered||!Number.isFinite(dollarsEntered)||Math.round(dollarsEntered*100)!==o.amount_cents){
+  byId('matchFeedback').textContent='The amount entered does not match this order. Keep it pending until resolved.';return;
+ }
+ if(memo!==String(o.zelle_memo||'').toUpperCase()){
+  byId('matchFeedback').textContent='The memo entered does not match this order. Keep it pending until resolved.';return;
+ }
+ if(ref.length<4||!byId('matchedRecipient').checked||!byId('observedDeposit').checked){
+  byId('matchFeedback').textContent='Enter the unique bank reference and check both bank verification statements.';return;
+ }
+ if(!confirm('Mark '+o.quantity+' ticket(s) as PAID AND VERIFIED based on the independently confirmed bank deposit? This cannot be undone.'))return;
+ const button=byId('confirmDeposit');button.disabled=true;
+ try{
+  await request('/api/admin/confirm',{method:'POST',body:JSON.stringify({
+    orderId:o.id,paymentReference:ref,bankAmountCents:Math.round(dollarsEntered*100),
+    bankMemo:memo,bankDepositObserved:true,recipientMatched:true
+  })});
+  selectedOrder=null;byId('reconcile').classList.add('hide');
+  await load();msg('Payment confirmed. Ticket numbers preserved and confirmation messages queued.');
+ }catch(e){byId('matchFeedback').textContent=e.message;button.disabled=false}
+};
 byId('emailTest').onclick=async()=>{
  if(!confirm('Send a test Who Dat Gives notification to both organizer inboxes? This does not create an order or take payment.'))return;
  const btn=byId('emailTest');btn.disabled=true;msg('Sending test notification...');
@@ -114,6 +212,6 @@ byId('emailTest').onclick=async()=>{
  }catch(e){msg(e.message)}
  finally{btn.disabled=false}
 };
-byId('logout').onclick=()=>{key='';byId('access').value='';byId('data').classList.add('hide');msg('Access key cleared.')};
+byId('logout').onclick=()=>{key='';selectedOrder=null;visibleOrders=[];byId('reconcile').classList.add('hide');byId('access').value='';byId('data').classList.add('hide');msg('Access key cleared.')};
 })();
 </script></body></html>

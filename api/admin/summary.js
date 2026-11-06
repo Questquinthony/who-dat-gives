@@ -38,6 +38,14 @@ module.exports=async function handler(req,res){
       organizerNotificationsReady:organizerEmailReady(),
       organizerRecipientCount:recipients().length,
       gmailSenderConfigured:Boolean(process.env.GMAIL_SMTP_USER),
+      launchChecks:{
+        zelleRecipientConfigured:Boolean(String(process.env.ZELLE_RECIPIENT_PUBLIC||'').trim()),
+        databaseConfigured:Boolean(process.env.DATABASE_URL),
+        emailSenderConfigured:organizerEmailReady(),
+        regulatorAuthorizationConfirmed:process.env.RAFFLE_AUTHORIZATION_CONFIRMED==='true',
+        salesSwitchEnabled:process.env.SALES_ENABLED==='true',
+        drawSwitchEnabled:process.env.DRAW_ENABLED==='true'
+      },
       source:'who-dat-gives'
     });
   }catch(e){console.error('Admin summary error',e.code||'unknown');return res.status(500).json({error:'Unable to load summary'});}
