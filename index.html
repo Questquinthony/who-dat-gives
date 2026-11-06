@@ -48,6 +48,9 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
 (function(){
  const q=document.getElementById('quantity'),amount=document.getElementById('amount'),overlay=document.getElementById('overlay');
  const el=id=>document.getElementById(id);
+ const invitation=new URLSearchParams(location.hash.slice(1)).get('invite');
+ const invitationHeaders=/^[a-f0-9]{64}$/.test(invitation||'')?{Authorization:'Bearer '+invitation}:{};
+ if(invitation!==null)history.replaceState(null,'',location.pathname+location.search);
  let liveCheckout=false,requestKey=null;
  function update(){
   const n=Math.min(liveCheckout?100:999,Math.max(1,parseInt(q.value,10)||1));
@@ -72,7 +75,7 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
    try{
     if(!requestKey)requestKey=crypto.randomUUID();
     const response=await fetch('/api/orders',{
-     method:'POST',headers:{'Content-Type':'application/json'},
+     method:'POST',headers:{'Content-Type':'application/json',...invitationHeaders},
      body:JSON.stringify({name,phone,email,quantity:n,requestKey})
     });
     const data=await response.json().catch(()=>({}));
@@ -91,13 +94,20 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
  };
  async function initializeCheckout(){
   try{
-   const r=await fetch('/api/health',{cache:'no-store'});
+   const r=await fetch('/api/health',{cache:'no-store',headers:invitationHeaders});
    if(!r.ok)return;
    const state=await r.json();
-   if(!state.paidEntriesOpen)return;
+   if(!state.paidEntriesOpen){
+    if(invitation!==null)el('heroPreview').textContent='Family reservations are currently closed.';
+    return;
+   }
+   if(!state.invitationAccepted){
+    el('heroPreview').textContent='Open your private family invitation to reserve ticket numbers.';
+    return;
+   }
    liveCheckout=true;
    q.max='100';update();
-   el('siteNotice').textContent='WHO DAT GIVES — TICKET NUMBERS RESERVED AT CHECKOUT';
+   el('siteNotice').textContent='WHO DAT GIVES — PRIVATE FAMILY INVITATION';
    el('heroPreview').textContent='Your unique ticket numbers are reserved automatically after ordering. Follow your private receipt for Zelle payment instructions.';
    el('entryHeading').textContent='Reserve Your Ticket Numbers';
    el('entryHint').textContent='ZELLE PAYMENT INSTRUCTIONS PROVIDED AFTER RESERVATION';

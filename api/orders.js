@@ -1,6 +1,7 @@
 const {randomUUID,randomBytes}=require('crypto');
 const {db,checkoutReady}=require('../lib/db');
 const {notifyOrganizers,notifyCustomer}=require('../lib/order-mail');
+const hasFamilyInvite=require('../lib/family-invite');
 const tokenRegex=/^[0-9a-f]{64}$/i;
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','no-store, private');
@@ -25,6 +26,7 @@ module.exports=async function handler(req,res){
  }
  if(req.method!=='POST'){res.setHeader('Allow','GET, POST');return res.status(405).json({error:'Method not allowed'})}
  if(!checkoutReady())return res.status(503).json({error:'Entries are not open. No payments are being accepted.'});
+ if(!hasFamilyInvite(req))return res.status(403).json({error:'Open your private family invitation to reserve numbers.'});
  const b=req.body||{},name=String(b.name||'').trim(),
   phone=String(b.phone||'').replace(/[^0-9+() -]/g,'').trim(),
   email=b.email?String(b.email).trim().toLowerCase():null,quantity=Number(b.quantity),
