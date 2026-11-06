@@ -22,7 +22,7 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
 @media(max-width:730px){header nav{display:none}.hero,.grid,.cards{grid-template-columns:1fr}.hero{padding:18px 0 31px}h1{font-size:62px}.hero p{font-size:16px}.poster{width:100%;max-width:450px;margin:0 auto;min-width:0;min-height:0;aspect-ratio:1404/1536;align-self:stretch;justify-self:stretch}section.details,section.entry{padding:32px 0}.panel{padding:20px}}
 </style></head><body>
 <div id="siteNotice" class="notice">DESIGN PREVIEW ONLY — NO PAYMENTS OR VALID RAFFLE TICKETS</div>
-<header class="wrap"><div class="brand"><div class="fleur">⚜</div><div>Who Dat Gives<small>Saints Raffle Event</small></div></div><nav><a href="#details">Game Details</a><a href="#entry">Ticket Preview</a></nav></header>
+<header class="wrap"><div class="brand"><div class="fleur">⚜</div><div>Who Dat Gives<small>Saints Raffle Event</small></div></div><nav><a href="#details">Game Details</a><a href="#entry">Ticket Preview</a><a href="#donation-preview">Donation Demo</a></nav></header>
 <main>
 <div class="wrap hero"><div><div class="eyebrow">⚜ Who Dat Nation · New Orleans</div><h1>SAINTS<br><em>RAFFLE!</em></h1><p>Two premium Saints seats. One unforgettable game day. Enjoy your Saints up close and personal!</p><div class="buttons"><a class="cta" href="#entry">View Ticket Preview</a><a class="second" href="#details">See Game Details</a></div><p class="previewtext" id="heroPreview">Paid entries are not open. This is an interactive design demonstration.</p></div>
 <div class="poster"><div class="fallback"><span>⚜</span>SAINTS RAFFLE<small>WHO DAT NATION</small></div><img src="/assets/saints-raffle-artwork.jpg" alt="Who Dat Gives original black-and-gold Saints raffle artwork" onerror="this.style.display='none'"></div></div>
@@ -35,7 +35,19 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
 <section class="wrap entry" id="entry"><div class="eyebrow">Ticket Experience Preview</div><h2 class="sect-title">Your Number. Your Chance.</h2><p class="subcopy" id="entryAbout">Try the sample quantity selector and ticket preview below. Nothing is submitted, saved or charged. The display numbers are examples only.</p><div class="grid">
 <div class="panel"><h3 id="entryHeading">Sample Entry Form</h3><p id="entryHint" class="hint">SIMULATION — NO REAL ORDERS</p><div class="field"><label for="name" id="nameLabel">Name (demo only)</label><input id="name" placeholder="Your name" autocomplete="off"></div><div class="field"><label for="phone" id="phoneLabel">Phone (demo only)</label><input id="phone" type="tel" placeholder="Your phone" autocomplete="off"></div><div class="field"><label for="email" id="emailLabel">Email (optional demo)</label><input id="email" type="email" placeholder="Your email" autocomplete="off"></div><div class="field"><label for="quantity" id="quantityLabel">Example number of entries</label><div class="quantity"><button type="button" id="minus" aria-label="Decrease quantity">−</button><input type="number" min="1" max="999" value="1" id="quantity"><button type="button" id="plus" aria-label="Increase quantity">+</button></div></div><div class="total"><b>Illustrative amount</b><strong id="amount">$15</strong></div><button type="button" class="cta full" id="demo">View My Sample Ticket</button><p class="tiny" id="entryFoot">This page does not accept payments, register entrants, record personal information, generate order IDs or send email confirmations.</p><p class="hint" id="entryFeedback" role="status"></p></div>
 <div><div class="eyebrow" style="text-align:center">Sample Ticket — Not Valid for Entry</div><div class="ticket"><div class="ticket-top"><strong>WHO DAT GIVES<br><small>SAINTS RAFFLE</small></strong><span>⚜</span></div><div class="ticket-body"><div class="cap">DEMONSTRATION ONLY</div><h3>WHO DAT<br>NATION!</h3><div class="ticket-num">01</div><div class="cap">SAMPLE NUMBER</div><div class="ticket-foot">SAINTS VS. PANTHERS · NOV 15, 2026<div class="qr"><img src="https://quickchart.io/qr?size=180&margin=0&text=https%3A%2F%2Fwho-dat-gives.vercel.app" alt="QR code for Who Dat Gives project website"></div><span>QR opens the site — not a unique ticket verifier</span></div></div></div><p class="tiny" style="text-align:center">After an authorized, verified purchase, each entry would need a server-issued unique number and permanent auditable record.</p></div>
-</div></section></main>
+</div></section>
+<section class="wrap entry" id="donation-preview" aria-labelledby="donation-heading">
+ <div class="eyebrow">Donation Demo</div>
+ <h2 class="sect-title" id="donation-heading">Support the Family</h2>
+ <div class="panel">
+  <p class="subcopy">Try an optional contribution. Donations are separate from ticket entries and do not change anyone’s odds.</p>
+  <p class="hint" id="donation-note">TEST ONLY. No money is collected and no payment details are needed.</p>
+  <div class="field"><label for="donation-amount">Sample donation amount ($)</label><input id="donation-amount" type="number" inputmode="decimal" min="1" step="0.01" value="15" aria-describedby="donation-note" required></div>
+  <button type="button" class="cta" id="donation-test">Preview Donation</button>
+  <p class="hint" id="donation-status" role="status"></p>
+ </div>
+</section>
+</main>
 <section class="wrap" style="padding:38px 0 46px;text-align:center">
   <div class="eyebrow">Who Dat Nation · Drawing Day</div>
   <h2 class="sect-title">Your Ticket. The Host's Drawing.</h2>
@@ -91,6 +103,14 @@ section.details,section.entry{padding:45px 0}.sect-title{font-size:clamp(30px,4.
   v.textContent=n===1?'01':n<=4?Array.from({length:n},(_,i)=>String(i+1).padStart(2,'0')).join(' · '):'01–'+String(n).padStart(2,'0');
   v.style.fontSize=n===1?'76px':'30px';overlay.classList.add('show');
   for(let i=0;i<70;i++){const el=document.createElement('i');el.className='confetti';el.style.left=(Math.random()*100)+'vw';el.style.background=['#edbe55','#fff1ce','#c99842','#fff'][i%4];el.style.animationDelay=Math.random()*.55+'s';document.body.appendChild(el);setTimeout(()=>el.remove(),4400)}
+ };
+ const donationAmount=el('donation-amount');
+ const donationStatus=el('donation-status');
+ donationAmount.addEventListener('input',()=>{donationStatus.textContent=''});
+ el('donation-test').onclick=()=>{
+  if(!donationAmount.reportValidity())return;
+  const total=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(donationAmount.valueAsNumber);
+  donationStatus.textContent='Sample donation: '+total+'. No payment was sent.';
  };
  async function initializeCheckout(){
   try{
